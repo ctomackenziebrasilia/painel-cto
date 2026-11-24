@@ -313,7 +313,7 @@ async function aplicar(sigs){
 function manual(){
   const P = {alta:0, 'média':1, baixa:2};
   const a = [...(D.editais.manual||[]).map(x => ({...x, origem:'Edital'})), ...(D.radarManual||[]).map(x => ({...x, origem:'Radar'}))].sort((x,y) => (P[x.prioridade] ?? 3) - (P[y.prioridade] ?? 3));
-  $('#manBox').innerHTML = a.length ? `<ul class="man box" style="list-style:none;padding-left:16px">${a.map(x => `<li><span class="pri ${esc(x.prioridade)}">${esc(x.prioridade)}</span><b>${esc(x.titulo)}</b> <span class="tag">${x.origem}</span><br>${esc(x.oque)} <a href="${esc(safe(x.link))}" target="_blank" rel="noopener">abrir</a></li>`).join('')}</ul>` : '<p class="empty">Nada para verificar à mão.</p>';
+  $('#manBox').innerHTML = a.length ? `<div class="man">${a.map(x => `<article class="man-item ${esc(x.prioridade)==='alta'?'alta':''}"><div class="man-head"><span class="pri ${esc(x.prioridade)}">${esc(x.prioridade)}</span><span class="tag">${x.origem === 'Radar' ? 'Olimpíada nova' : 'Edital'}</span></div><h3>${esc(x.titulo)}</h3><p>${esc(x.oque)}</p>${/^https?:\/\//i.test(x.link || '') ? `<a class="ui-btn" href="${esc(x.link)}" target="_blank" rel="noopener">Abrir site</a>` : ''}</article>`).join('')}</div>` : '<p class="empty">Nada para verificar à mão.</p>';
 }
 
 /* ===== Início ===== */
