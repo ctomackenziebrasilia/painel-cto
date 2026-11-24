@@ -28,6 +28,25 @@ let confirmando = {};
 let D = null, senhaGravacao = '', filtro = 'pendentes', segF = 'todos', nMeses = 6, forcar = {}, msgs = {}, ocupado = {};
 
 /* ===== Leitura da planilha (gviz, JSONP) ===== */
+const ICONS = {"file-check-2": "<path d=\"M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"m3 15 2 2 4-4\"/>", "file-spreadsheet": "<path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"M8 13h2\"/><path d=\"M14 13h2\"/><path d=\"M8 17h2\"/><path d=\"M14 17h2\"/>", "refresh-cw": "<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/><path d=\"M21 3v5h-5\"/><path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/><path d=\"M8 16H3v5\"/>", "check": "<path d=\"M20 6 9 17l-5-5\"/>", "calendar": "<path d=\"M8 2v4\"/><path d=\"M16 2v4\"/><rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\"/><path d=\"M3 10h18\"/>", "sparkles": "<path d=\"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z\"/>", "circle-alert": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"12\" x2=\"12\" y1=\"8\" y2=\"12\"/><line x1=\"12\" x2=\"12.01\" y1=\"16\" y2=\"16\"/>", "log-out": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\"/><polyline points=\"16 17 21 12 16 7\"/><line x1=\"21\" x2=\"9\" y1=\"12\" y2=\"12\"/>"};
+const ic = n => `<svg class="i" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+function pintarIcones(){ document.querySelectorAll('svg[data-i]').forEach(s => { s.outerHTML = ic(s.dataset.i); }); }
+const TABS = [{id:'decidir', nome:'Olimpíadas novas', curto:'Decidir', i:'sparkles'}, {id:'agenda', nome:'Calendário', curto:'Calendário', i:'calendar'}, {id:'editais', nome:'Editais', curto:'Editais', i:'file-check-2'}, {id:'manual', nome:'Verificar à mão', curto:'Verificar', i:'circle-alert'}];
+let aba = TABS.some(t => '#' + t.id === location.hash) ? location.hash.slice(1) : 'decidir';
+function contagens(){
+  if (!D) return {};
+  return {decidir: D.radar.filter(c => ['Nova','Em análise'].includes(c.situacao)).length,
+    editais: Object.keys(novPorSigla()).filter(s => !aplicado(s)).length,
+    manual: (D.editais.manual || []).length + (D.radarManual || []).length, agenda: ''};
+}
+function navegar(){
+  const n = contagens();
+  $('#navlist').innerHTML = TABS.map(t => `<button data-tab="${t.id}" class="${t.id===aba?'is-active':''}">${ic(t.i)}<span class="grow">${t.nome}</span>${n[t.id] !== '' && n[t.id] !== undefined ? `<span class="ui-count">${n[t.id]}</span>` : ''}</button>`).join('');
+  $('#bottomnav').innerHTML = TABS.map(t => `<button class="ui-nav-item ${t.id===aba?'is-active':''}" data-tab="${t.id}">${ic(t.i)}${t.curto}</button>`).join('');
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== aba));
+  $('#statsM').classList.toggle('so-inicio', aba !== 'decidir'); $('#subM').classList.toggle('so-inicio', aba !== 'decidir');
+}
+function irPara(id){ aba = id; try { history.replaceState(null, '', '#' + id); } catch(e){} navegar(); window.scrollTo(0, 0); }
 let gvizN = 0;
 function gviz(sheet){
   return new Promise((resolve, reject) => {
@@ -139,8 +158,9 @@ function stats(){
   const ev30 = eventos().filter(e => e.d >= hoje && e.d <= lim && /inscri/i.test(e.rot)).length;
   const nov = Object.keys(novPorSigla()).filter(s => !aplicado(s)).length;
   const man = (D.editais.manual || []).length + (D.radarManual || []).length;
-  $('#stats').innerHTML = [[pend.length,'olimpíadas novas esperando decisão'],[nov,'olimpíadas com datas oficiais para aplicar'],[ev30,'inscrições abrindo ou fechando em 30 dias'],[man,'itens para verificar à mão']]
+  const h = [[pend.length,'olimpíadas novas para decidir'],[nov,'com datas oficiais para aplicar'],[ev30,'inscrições abrindo ou fechando em 30 dias'],[man,'itens para verificar à mão']]
     .map(([n,t]) => `<div class="stat"><b>${n}</b><span>${t}</span></div>`).join('');
+  $('#stats').innerHTML = h; $('#statsM').innerHTML = h; navegar();
 }
 
 /* ===== Radar: decidir ===== */
@@ -162,7 +182,7 @@ function cards(){
     ${d === 'Cadastrada' ? '<p class="obs"><b>Já está no calendário.</b></p>' : `
     <input class="motivo" id="mot-${esc(id)}" placeholder="Motivo (opcional)" value="${esc(c.motivo)}" maxlength="300">
     <div class="msg" id="rmsg-${esc(id)}">${esc(msgs['r:'+c.sigla]||'')}</div>
-    ${confirmando[c.sigla] ? painelCadastro(c, id) : `<div class="dec">${DEC.map(v => `<button data-s="${esc(c.sigla)}" data-v="${v}" aria-pressed="${d===v}" ${ocupado['r:'+c.sigla]?'disabled':''}>${v==='Cadastrar'?'Cadastrar no calendário':v==='Descartada'?'Descartar':v}</button>`).join('')}</div>`}`}</article>`;
+    ${confirmando[c.sigla] ? painelCadastro(c, id) : `<div class="dec">${DEC.map(v => `<button data-s="${esc(c.sigla)}" data-v="${v}" aria-pressed="${d===v}" ${ocupado['r:'+c.sigla]?'disabled':''}>${v==='Cadastrar'?'Cadastrar':v==='Descartada'?'Descartar':v}</button>`).join('')}</div>`}`}</article>`;
   }).join('') : '<p class="empty">Nenhuma candidata neste filtro.</p>';
 }
 async function decidir(sigla, situacao){
@@ -245,7 +265,7 @@ function aplicado(s){
 function editais(){
   const C = D.cadastradas, grp = {of:[], pr:[], pm:[], sd:[], ca:[]};
   for (const o of C) { const k = o.situacao === 'Cancelado' ? 'ca' : (o.situacao === 'Confirmado' || o.confirmadas) ? 'of' : o.situacao === 'Previsto (só o mês)' ? 'pm' : Object.keys(o.datas).length ? 'pr' : 'sd'; grp[k].push(o); }
-  const L = {of:['Já tem data oficial','#1f6b45'], pr:['Só previsto (aguarda edital)','#8a8284'], pm:['Previsto só o mês','#b07a1a'], sd:['Sem datas','#c7c0c1'], ca:['Encerrada','#8e2b2e']};
+  const L = {of:['Já tem data oficial','#047857'], pr:['Só previsto (aguarda edital)','#64748B'], pm:['Previsto só o mês','#D97706'], sd:['Sem datas','#CBD5E1'], ca:['Encerrada','#A6192E']};
   $('#editLead').textContent = `${C.length} olimpíadas na planilha. ${grp.of.length} já têm alguma etapa com data oficial; as outras usam datas da edição anterior até sair o edital.`;
   const usados = Object.entries(grp).filter(([,l]) => l.length);
   $('#meter').innerHTML = usados.map(([k,l]) => `<div style="flex:${l.length};background:${L[k][1]}" title="${L[k][0]}">${l.length}</div>`).join('');
@@ -300,18 +320,23 @@ function manual(){
 function render(){ stats(); cards(); agenda(); editais(); manual(); }
 async function abrir(){
   $('#gate').classList.add('hidden');
+  $('#linkPlanilha').href = PLANILHA_LINK; navegar();
   try {
     await carregar();
     const prox = D.proxima ? ` Próxima verificação: ${dt(D.proxima).toLocaleDateString('pt-BR',{weekday:'long', day:'2-digit', month:'2-digit'})}.` : '';
-    $('#titulo').textContent = 'Painel do Calendário Olímpico';
-    $('#sub').textContent = `Última verificação semanal: ${br(D.atualizado)}.${prox} Olimpíadas e radar são lidos da planilha na hora em que a página abre.`;
-    $('#foot').innerHTML = `Relatório da tarefa semanal de ${br(D.atualizado)}; olimpíadas e radar lidos agora da <a href="${esc(PLANILHA_LINK)}" target="_blank" rel="noopener">planilha</a>. Cada gravação fica anotada na aba "Registro do painel". Nada muda na planilha sem a senha de gravação.`;
+    $('#titulo').textContent = `Última verificação: ${br(D.atualizado)}`;
+    document.querySelector('#status .dot').classList.remove('wait');
+    $('#sub').textContent = `Relatório da tarefa semanal de ${br(D.atualizado)}.${prox} As olimpíadas e o radar são lidos da planilha na hora em que a página abre.`;
+    $('#subM').textContent = `Última verificação: ${br(D.atualizado)}.${prox}`;
+    $('#foot').innerHTML = `Cada gravação fica anotada na aba "Registro do painel" da <a href="${esc(PLANILHA_LINK)}" target="_blank" rel="noopener">planilha</a>. Nada muda na planilha sem a senha de gravação.`;
     render();
-  } catch(e){ $('#sub').textContent = 'Não foi possível carregar os dados (' + (e.message || e) + '). Tente recarregar a página.'; }
+  } catch(e){ const t = 'Não foi possível carregar os dados (' + (e.message || e) + '). Tente recarregar a página.'; $('#sub').textContent = t; $('#subM').textContent = t; $('#cards').innerHTML = `<p class="empty">${esc(t)}</p>`; }
 }
 
 document.addEventListener('click', ev => {
   const b = ev.target.closest('button'); if (!b) return;
+  if (b.dataset.tab) { irPara(b.dataset.tab); return; }
+  if (b.id === 'recarregar') { b.disabled = true; carregar().then(render).catch(()=>{}).finally(() => { b.disabled = false; }); return; }
   if (b.dataset.f) { filtro = b.dataset.f; cards(); }
   else if (b.dataset.g) { segF = b.dataset.g; agenda(); }
   else if (b.dataset.s && b.dataset.v === 'Cadastrar') { confirmando[b.dataset.s] = 1; msgs['r:'+b.dataset.s] = ''; cards(); }
@@ -327,5 +352,7 @@ $('#gateForm').addEventListener('submit', entrar);
 $('#modalForm').addEventListener('submit', e => { e.preventDefault(); fecharModal($('#modalSenha').value); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#modal').classList.contains('show')) fecharModal(''); });
 
+pintarIcones();
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (TABS.some(t => t.id === h)) { aba = h; navegar(); } });
 if (entradaValida()) abrir(); else setTimeout(() => $('#gateSenha').focus(), 50);
 }
