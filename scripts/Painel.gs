@@ -3,7 +3,8 @@
 // O site do painel (https://ctomackenziebrasilia.github.io/painel-cto/) chama este script para:
 //   - conferir a senha de ENTRADA (ver o painel) e a senha de GRAVAÇÃO (mudar a planilha);
 //   - aplicar na aba Eventos as datas oficiais encontradas pela tarefa semanal;
-//   - registrar na aba Radar a decisão da equipe sobre cada olimpíada nova.
+//   - registrar na aba Radar a decisão da equipe sobre cada olimpíada nova;
+//   - CADASTRAR uma olimpíada do Radar direto no calendário (abas Olimpiadas e Eventos).
 // As senhas ficam guardadas só aqui (resumo criptográfico nas Propriedades do script), nunca no site.
 // Cada gravação fica anotada na aba "Registro do painel".
 //
@@ -25,6 +26,8 @@ const COLUNAS_DATA_PAINEL = ['Inscrição (início)', 'Inscrição (fim)', 'Divu
   'Fase Final (início)', 'Fase Final (fim)', 'Resultado', 'Premiação'];
 const ETAPAS_PAINEL = ['Inscrição', 'Divulgação aos alunos', '1ª Fase', '2ª Fase', 'Fase Final', 'Resultado', 'Premiação'];
 const SITUACOES_RADAR_PAINEL = ['Nova', 'Em análise', 'Cadastrar', 'Descartada'];
+const AREAS_PAINEL = ['Matemática', 'Ciências da Natureza', 'Ciências Humanas', 'Linguagens', 'Tecnologia', 'Multidisciplinar / Negócios'];
+const CUSTO_PAINEL = {'Gratuita': 'Gratuita', 'Paga por aluno': 'Paga por Aluno', 'Taxa por escola': 'Taxa Única por Escola'};
 const MAX_ERROS_PAINEL = 8;          // tentativas erradas de senha...
 const BLOQUEIO_SEG_PAINEL = 15 * 60; // ...bloqueiam novas tentativas por 15 minutos
 
@@ -102,6 +105,7 @@ function doPost(e) {
     if (acao === 'entrar') return jsonPainel_({ok: true, podeGravar: okGravacao});
     if (acao === 'aplicarDatas') return jsonPainel_(aplicarDatasPainel_(pedido));
     if (acao === 'decidirRadar') return jsonPainel_(decidirRadarPainel_(pedido));
+    if (acao === 'cadastrarRadar') return jsonPainel_(cadastrarRadarPainel_(pedido));
     return jsonPainel_({ok: false, erro: 'acao_desconhecida'});
   } catch (err) {
     console.error(err);
@@ -202,6 +206,88 @@ function decidirRadarPainel_(p) {
   aba.getRange(linha, col('Decidido em') + 1).setValue(Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm'));
   registrarPainel_('Decisão no radar', sigla, situacao + (motivo ? ' – ' + motivo : ''));
   return {ok: true};
+}
+
+// pedido: {sigla, area (opcional; senão usa "Área no calendário" da aba Radar), motivo}
+// Lê tudo da aba Radar (nunca do site), confere e grava uma linha nova em Olimpiadas e em Eventos.
+function cadastrarRadarPainel_(p) {
+  const sigla = String(p.sigla || '').trim();
+  const ss = SpreadsheetApp.openById(PLANILHA_PAINEL);
+  const radar = ss.getSheetByName('Radar'), olim = ss.getSheetByName('Olimpiadas'), eventos = ss.getSheetByName('Eventos');
+  if (!radar || !olim || !eventos) return {ok: false, erro: 'planilha', msg: 'Aba Radar, Olimpiadas ou Eventos não encontrada.'};
+  const rv = radar.getDataRange().getDisplayValues();
+  const rt = rv[0].map(v => String(v).trim()), rc = t => rt.indexOf(t);
+  const r = rv.findIndex((row, i) => i > 0 && String(row[rc('Sigla')]).trim() === sigla);
+  if (!sigla || r < 0) return {ok: false, erro: 'dados', msg: `Sigla ${sigla} não encontrada na aba Radar.`};
+  const R = t => rc(t) >= 0 ? String(rv[r][rc(t)] || '').trim() : '';
+  if (R('Situação') === 'Cadastrada') return {ok: false, erro: 'dados', msg: 'Esta olimpíada já foi cadastrada.'};
+
+  // Não pode repetir sigla nem nome do calendário.
+  const ov = olim.getDataRange().getDisplayValues();
+  const ot = ov[0].map(v => String(v).trim()), oc = t => ot.indexOf(t);
+  const nome = R('Olimpíada');
+  const norm = v => String(v).trim().toLowerCase();
+  if (ov.some((row, i) => i > 0 && (norm(row[oc('Sigla')]) === norm(sigla) || (nome && norm(row[oc('Nome')]) === norm(nome))))) {
+    return {ok: false, erro: 'dados', msg: `Já existe ${sigla} (ou o mesmo nome) na aba Olimpiadas.`};
+  }
+  const area = String(p.area || R('Área no calendário')).trim();
+  if (AREAS_PAINEL.indexOf(area) < 0) return {ok: false, erro: 'dados', msg: 'Escolha a área da olimpíada no calendário.'};
+  const segs = R('Segmentos').split('/').map(s => s.trim());
+  if (!['EFAI', 'EFAF', 'EM'].some(s => segs.indexOf(s) >= 0)) return {ok: false, erro: 'dados', msg: 'Preencha os Segmentos na aba Radar antes de cadastrar.'};
+
+  // Datas: "Coluna=DD/MM/AAAA; ..."
+  const datas = [];
+  for (const parte of R('Datas para cadastro').split(';').map(s => s.trim()).filter(Boolean)) {
+    const i = parte.indexOf('=');
+    const col = parte.slice(0, i).trim(), d = dataPainel_(parte.slice(i + 1).trim());
+    if (i < 0 || COLUNAS_DATA_PAINEL.indexOf(col) < 0 || !d) return {ok: false, erro: 'dados', msg: `Data inválida em "Datas para cadastro": ${parte}`};
+    datas.push([col, d]);
+  }
+  let situacao = R('Situação das datas');
+  if (['Previsto', 'Previsto (só o mês)', 'Confirmado', ''].indexOf(situacao) < 0) return {ok: false, erro: 'dados', msg: 'Situação das datas inválida.'};
+  if (!datas.length) situacao = '';
+  else if (!situacao) situacao = 'Previsto';
+  const etapas = R('Etapas oficiais').split(',').map(s => s.trim()).filter(e => ETAPAS_PAINEL.indexOf(e) >= 0);
+  const hoje = Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy');
+  const link = /^https?:\/\//i.test(R('Fonte das datas')) ? R('Fonte das datas') : (/^https?:\/\//i.test(R('Fonte oficial')) ? R('Fonte oficial') : '');
+
+  // 1) Olimpiadas (primeiro: a aba Eventos só aceita siglas que existem aqui).
+  const lo = primeiraLinhaLivrePainel_(olim, oc('Sigla') + 1);
+  const obs = [R('Observação'), R('Alertas') ? 'A conferir: ' + R('Alertas') : '', `Cadastrada pelo painel em ${hoje}.`].filter(Boolean).join(' ');
+  const valoresO = {'Sigla': sigla, 'Nome': nome, 'Área': area, 'EFAI': segs.indexOf('EFAI') >= 0 ? 'OK' : '',
+    'EFAF': segs.indexOf('EFAF') >= 0 ? 'OK' : '', 'EM': segs.indexOf('EM') >= 0 ? 'OK' : '',
+    'Do ano': R('Do ano'), 'Até o ano': R('Até o ano'), 'Site oficial': /^https?:\/\//i.test(R('Fonte oficial')) ? R('Fonte oficial') : '',
+    'Modalidade': R('Modalidade'), 'Custo': CUSTO_PAINEL[R('Tipo de custo')] || '', 'Inscrição por': R('Inscrição por'), 'Observações': obs};
+  for (const [t, v] of Object.entries(valoresO)) if (oc(t) >= 0 && v !== '') olim.getRange(lo, oc(t) + 1).setValue(v);
+
+  // 2) Eventos
+  const et = eventos.getRange(1, 1, 1, eventos.getLastColumn()).getDisplayValues()[0].map(v => String(v).trim()), ec = t => et.indexOf(t);
+  const le = primeiraLinhaLivrePainel_(eventos, ec('Sigla') + 1);
+  const det = [R('Detalhes para cadastro'), `Cadastrada pelo painel em ${hoje}.`].filter(Boolean).join(' ');
+  const valoresE = {'Sigla': sigla, 'Situação': situacao, 'Etapas confirmadas': etapas.join(', '), 'Detalhes': det, 'Fonte das datas': link};
+  for (const [t, v] of Object.entries(valoresE)) if (ec(t) >= 0 && v !== '') eventos.getRange(le, ec(t) + 1).setValue(v);
+  for (const [col, d] of datas) if (ec(col) >= 0) eventos.getRange(le, ec(col) + 1).setValue(d);
+
+  // 3) Radar
+  const lr = r + 1;
+  radar.getRange(lr, rc('Situação') + 1).setValue('Cadastrada');
+  if (rc('Decidido em') >= 0) radar.getRange(lr, rc('Decidido em') + 1).setValue(Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm'));
+  if (rc('Motivo') >= 0 && p.motivo) radar.getRange(lr, rc('Motivo') + 1).setValue(String(p.motivo).slice(0, 500));
+  if (rc('Área no calendário') >= 0 && area !== R('Área no calendário')) radar.getRange(lr, rc('Área no calendário') + 1).setValue(area);
+  SpreadsheetApp.flush();
+  registrarPainel_('Cadastro no calendário', sigla, `Olimpiadas linha ${lo}, Eventos linha ${le}; ${datas.length} datas (${situacao || 'sem datas'})`);
+  return {ok: true, linhaOlimpiadas: lo, linhaEventos: le, situacao, datas: datas.length};
+}
+
+// Primeira linha (a partir da 2) com a coluna da Sigla vazia; cria linhas se precisar.
+function primeiraLinhaLivrePainel_(aba, colSigla) {
+  const n = aba.getMaxRows();
+  const vals = aba.getRange(2, colSigla, n - 1, 1).getValues();
+  let ultima = 0;
+  vals.forEach((v, i) => { if (String(v[0]).trim() !== '') ultima = i + 1; });
+  const linha = ultima + 2;
+  if (linha > n) aba.insertRowsAfter(n, 10);
+  return linha;
 }
 
 // ===== Apoio =====

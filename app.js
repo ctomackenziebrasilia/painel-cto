@@ -23,6 +23,8 @@ const store = {
 const ROT = {"Inscrição (início)":"Abrem as inscrições","Inscrição (fim)":"Fecham as inscrições","Divulgação aos alunos":"Divulgação aos alunos","1ª Fase (início)":"1ª fase","1ª Fase (fim)":"Fim da 1ª fase","2ª Fase (início)":"2ª fase","2ª Fase (fim)":"Fim da 2ª fase","Fase Final (início)":"Fase final","Fase Final (fim)":"Fim da fase final","Resultado":"Resultado","Premiação":"Premiação"};
 const GRP = k => k.replace(/ \((início|fim)\)$/, '');
 const DEC = ['Cadastrar','Em análise','Descartada'];
+const AREAS = ['Matemática','Ciências da Natureza','Ciências Humanas','Linguagens','Tecnologia','Multidisciplinar / Negócios'];
+let confirmando = {};
 let D = null, senhaGravacao = '', filtro = 'pendentes', segF = 'todos', nMeses = 6, forcar = {}, msgs = {}, ocupado = {};
 
 /* ===== Leitura da planilha (gviz, JSONP) ===== */
@@ -76,6 +78,9 @@ async function carregar(){
     proxima: txt(x['Próxima edição']), fonte: txt(x['Fonte oficial']), obs: txt(x['Observação']),
     alertas: txt(x['Alertas']).split(';').map(s => s.trim()).filter(Boolean),
     encontrada: txt(x['Encontrada em']), situacao: txt(x['Situação']) || 'Nova', motivo: txt(x['Motivo']), decidido: txt(x['Decidido em']),
+    areaCal: txt(x['Área no calendário']), doAno: txt(x['Do ano']), ateAno: txt(x['Até o ano']),
+    sitDatas: txt(x['Situação das datas']), etapasOf: txt(x['Etapas oficiais']), detalhesCad: txt(x['Detalhes para cadastro']),
+    datasCad: txt(x['Datas para cadastro']).split(';').map(s => s.trim()).filter(Boolean).map(p => { const i = p.indexOf('='); return {col: txt(p.slice(0, i)), data: txt(p.slice(i + 1))}; }),
     datas: txt(x['Datas conhecidas']).split(';').map(s => s.trim()).filter(Boolean).map(p => {
       const [rot, per] = p.split('='); const [a, b] = String(per || '').split('-');
       return {rotulo: txt(rot), ini: brToIso(a), fim: brToIso(b)};
@@ -158,7 +163,7 @@ function cards(){
     ${d === 'Cadastrada' ? '<p class="obs"><b>Já está no calendário.</b></p>' : `
     <input class="motivo" id="mot-${esc(id)}" placeholder="Motivo (opcional)" value="${esc(c.motivo)}" maxlength="300">
     <div class="msg" id="rmsg-${esc(id)}">${esc(msgs['r:'+c.sigla]||'')}</div>
-    <div class="dec">${DEC.map(v => `<button data-s="${esc(c.sigla)}" data-v="${v}" aria-pressed="${d===v}" ${ocupado['r:'+c.sigla]?'disabled':''}>${v==='Descartada'?'Descartar':v}</button>`).join('')}</div>`}</article>`;
+    ${confirmando[c.sigla] ? painelCadastro(c, id) : `<div class="dec">${DEC.map(v => `<button data-s="${esc(c.sigla)}" data-v="${v}" aria-pressed="${d===v}" ${ocupado['r:'+c.sigla]?'disabled':''}>${v==='Cadastrar'?'Cadastrar no calendário':v==='Descartada'?'Descartar':v}</button>`).join('')}</div>`}`}</article>`;
   }).join('') : '<p class="empty">Nenhuma candidata neste filtro.</p>';
 }
 async function decidir(sigla, situacao){
@@ -173,6 +178,38 @@ async function decidir(sigla, situacao){
     else if (!j.ok) msgs['r:'+sigla] = j.msg || 'Não foi possível gravar.';
     else { c.situacao = nova; c.motivo = motivo; c.decidido = new Date().toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'}); msgs['r:'+sigla] = nova === 'Nova' ? 'Decisão desfeita.' : 'Gravado na aba Radar.'; }
   } catch(e){ msgs['r:'+sigla] = e.msg || 'Erro ao gravar.'; }
+  delete ocupado['r:'+sigla]; cards(); stats();
+}
+
+function painelCadastro(c, id){
+  const lab = k => ROT[k] || k;
+  return `<div class="box cadbox"><h3>Vai entrar no calendário</h3>
+  <label class="obs" for="area-${esc(id)}">Área no calendário</label>
+  <select class="motivo" id="area-${esc(id)}"><option value="">Escolha…</option>${AREAS.map(a => `<option ${a===c.areaCal?'selected':''}>${esc(a)}</option>`).join('')}</select>
+  <p class="obs"><b>Segmentos:</b> ${esc(c.seg.join(', ') || 'a conferir')}${c.doAno ? ` · <b>Anos:</b> ${esc(c.doAno)} a ${esc(c.ateAno || '3ª série EM')}` : ''}</p>
+  ${c.datasCad.length ? `<p class="obs"><b>Datas (${esc(c.sitDatas || 'Previsto')}${c.etapasOf ? '; oficiais: ' + esc(c.etapasOf) : ''}):</b></p><ul class="obs">${c.datasCad.map(x => `<li>${esc(lab(x.col))}: ${esc(x.data)}</li>`).join('')}</ul>` : '<p class="obs"><b>Sem datas por enquanto.</b> A tarefa semanal procura as datas oficiais e elas aparecem para aplicar no painel.</p>'}
+  ${c.detalhesCad ? `<p class="obs">${esc(c.detalhesCad)}</p>` : ''}
+  ${c.seg.length ? '' : '<div class="msg">Faltam os segmentos (EFAI/EFAF/EM) na aba Radar.</div>'}
+  <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="ghost2" data-cad-cancel="${esc(c.sigla)}">Cancelar</button><button class="btn" data-cad="${esc(c.sigla)}" ${ocupado['r:'+c.sigla]||!c.seg.length?'disabled':''}>${ocupado['r:'+c.sigla]?'Cadastrando…':'Confirmar cadastro'}</button></div></div>`;
+}
+async function cadastrar(sigla){
+  const id = sigla.replace(/\W/g,'_');
+  const area = $('#area-' + id)?.value || '';
+  const motivo = ($('#mot-' + id)?.value || '').trim();
+  if (!area) { msgs['r:'+sigla] = 'Escolha a área no calendário.'; cards(); return; }
+  ocupado['r:'+sigla] = 1; msgs['r:'+sigla] = ''; cards();
+  try {
+    const j = await gravar({acao: 'cadastrarRadar', sigla, area, motivo});
+    if (j.cancelado) msgs['r:'+sigla] = '';
+    else if (!j.ok) msgs['r:'+sigla] = j.msg || 'Não foi possível cadastrar.';
+    else {
+      delete confirmando[sigla];
+      msgs['r:'+sigla] = `Cadastrada no calendário (${j.datas} datas${j.situacao ? ', ' + j.situacao : ''}). O site do calendário já mostra; as agendas atualizam em até 2 horas.`;
+      delete ocupado['r:'+sigla];
+      try { await carregar(); } catch(e){}
+      render(); return;
+    }
+  } catch(e){ msgs['r:'+sigla] = e.msg || 'Erro ao cadastrar.'; }
   delete ocupado['r:'+sigla]; cards(); stats();
 }
 
@@ -278,7 +315,10 @@ document.addEventListener('click', ev => {
   const b = ev.target.closest('button'); if (!b) return;
   if (b.dataset.f) { filtro = b.dataset.f; cards(); }
   else if (b.dataset.g) { segF = b.dataset.g; agenda(); }
+  else if (b.dataset.s && b.dataset.v === 'Cadastrar') { confirmando[b.dataset.s] = 1; msgs['r:'+b.dataset.s] = ''; cards(); }
   else if (b.dataset.s) decidir(b.dataset.s, b.dataset.v);
+  else if (b.dataset.cad) cadastrar(b.dataset.cad);
+  else if (b.dataset.cadCancel) { delete confirmando[b.dataset.cadCancel]; cards(); }
   else if (b.dataset.ap) { const l = b.dataset.ap === '__todas' ? Object.keys(novPorSigla()).filter(s => !aplicado(s)) : [b.dataset.ap]; aplicar(l); }
   else if (b.id === 'maisMeses') { nMeses = nMeses < 12 ? 12 : 6; agenda(); }
   else if (b.id === 'sair') { store.del('cto-painel-entrada'); senhaGravacao = ''; location.reload(); }

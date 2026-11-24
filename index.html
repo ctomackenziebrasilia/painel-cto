@@ -118,8 +118,9 @@ button:focus-visible,.chip:focus-visible,a:focus-visible{outline:3px solid var(-
 .modal.show{display:flex}
 .modal .box{width:min(440px,100%);margin:0}
 .modal .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
-.modal .ghost2{min-height:44px;border:1px solid var(--line);border-radius:10px;padding:0 16px;background:var(--bg);color:var(--ink);font:600 15px "Public Sans",sans-serif;cursor:pointer}
+.ghost2{min-height:44px;border:1px solid var(--line);border-radius:10px;padding:0 16px;background:var(--bg);color:var(--ink);font:600 15px "Public Sans",sans-serif;cursor:pointer}
 .motivo{min-height:40px;font-size:14px;width:100%}
+.cadbox{margin:4px 0 0;background:var(--bg)}.cadbox ul{margin:0 0 6px;padding-left:18px}.cadbox label{display:block;margin-bottom:4px}
 .hidden{display:none!important}
 .sair{background:transparent;border:1px solid rgba(255,255,255,.6);color:#fff;border-radius:999px;padding:6px 14px;font:600 14px "Public Sans",sans-serif;cursor:pointer;min-height:36px}
 .toprow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
@@ -157,7 +158,7 @@ footer{color:var(--soft);font-size:14px;border-top:1px solid var(--line)}
 <main>
 <section class="band" id="decidir"><div class="wrap">
  <h2>Olimpíadas novas para decidir</h2>
- <p class="lead">Candidatas que a tarefa semanal achou e que ainda não estão no calendário. A decisão fica gravada na aba Radar da planilha. Quem marcar "Cadastrar" depois pede ao Claude: "cadastrar no calendário as olimpíadas marcadas como Cadastrar no radar".</p>
+ <p class="lead">Candidatas que a tarefa semanal achou e que ainda não estão no calendário. A decisão fica gravada na aba Radar. "Cadastrar no calendário" mostra antes o que vai entrar e, ao confirmar, já coloca a olimpíada na planilha, no site do calendário e nas agendas.</p>
  <div class="chips" id="filtros"></div>
  <div class="grid" id="cards"><p class="loading">Carregando…</p></div>
 </div></section>
