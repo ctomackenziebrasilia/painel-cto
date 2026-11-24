@@ -1,0 +1,316 @@
+{
+ "atualizado": "2026-11-23",
+ "proxima": "2026-11-30",
+ "radarNovasSemana": [
+  "OBECON",
+  "ONE",
+  "ONANO",
+  "OBIATEC",
+  "OBICT",
+  "Purple Comet",
+  "FEBRACE",
+  "Bebras",
+  "OBN"
+ ],
+ "radarManual": [
+  {
+   "prioridade": "alta",
+   "titulo": "OBIATEC (Seleta Educação)",
+   "oque": "Inscrições já abertas. Conferir nome completo, segmentos e custo no regulamento.",
+   "link": "https://www.seletaeducacao.com.br/"
+  },
+  {
+   "prioridade": "média",
+   "titulo": "OBE – Olimpíada Brasileira de Estatística (ICMC-USP)",
+   "oque": "Site não abriu. Conferir taxa para escola privada, regulamento e calendário 2027. Não oficial (Jornal da USP): escola privada a partir de R$ 49,90.",
+   "link": "https://obe.icmc.usp.br/"
+  },
+  {
+   "prioridade": "média",
+   "titulo": "AMC 8/10/12 (MAA, EUA)",
+   "oque": "Conferir taxa, datas 2026-27 e se aceita inscrição pela escola.",
+   "link": "https://maa.org/amc-international/"
+  },
+  {
+   "prioridade": "baixa",
+   "titulo": "OBN – etapa local do DF",
+   "oque": "Conferir se haverá comitê no DF em 2027, quem organiza, datas e se aceita escola privada.",
+   "link": "https://brazilianbrainbee.org/"
+  },
+  {
+   "prioridade": "baixa",
+   "titulo": "OBSAT – Olimpíada Brasileira de Satélites (MCTI)",
+   "oque": "Sem edição 2026 nem anúncio de 2027; conferir se ainda existe.",
+   "link": "https://dplnews.com/?p=219928"
+  }
+ ],
+ "editais": {
+  "aviso": "Parte de editais refeita pelo Claude em 23/11 às 17h50 (o relatório da tarefa não ficou guardado). As olimpíadas não listadas aqui serão conferidas pela tarefa em 30/11.",
+  "novidades": [
+   {
+    "sigla": "OBLI.1",
+    "edicao": "2027.1",
+    "coluna": "Inscrição (início)",
+    "etapa": "Inscrição (início)",
+    "oficial": "23/11/2026",
+    "planilha": "25/11/2026",
+    "link": "https://www.seletaeducacao.com.br/obli"
+   },
+   {
+    "sigla": "OBLI.1",
+    "edicao": "2027.1",
+    "coluna": "Inscrição (fim)",
+    "etapa": "Inscrição (fim)",
+    "oficial": "12/05/2027",
+    "planilha": "29/04/2027",
+    "link": "https://www.seletaeducacao.com.br/obli"
+   },
+   {
+    "sigla": "OBLI.1",
+    "edicao": "2027.1",
+    "coluna": "1ª Fase (início)",
+    "etapa": "Prova (1ª Fase)",
+    "oficial": "19/05/2027",
+    "planilha": "06/05/2027",
+    "link": "https://www.seletaeducacao.com.br/obli"
+   },
+   {
+    "sigla": "OBLI.1",
+    "edicao": "2027.1",
+    "coluna": "Resultado",
+    "etapa": "Resultado",
+    "oficial": "26/05/2027",
+    "planilha": "13/05/2027",
+    "link": "https://www.seletaeducacao.com.br/obli"
+   },
+   {
+    "sigla": "OBGP.1",
+    "edicao": "2027.1",
+    "coluna": "Inscrição (fim)",
+    "etapa": "Inscrição (fim)",
+    "oficial": "10/03/2027",
+    "planilha": "10/03/2027",
+    "link": "https://www.seletaeducacao.com.br/obgp"
+   },
+   {
+    "sigla": "OBGP.1",
+    "edicao": "2027.1",
+    "coluna": "1ª Fase (início)",
+    "etapa": "Prova (1ª Fase)",
+    "oficial": "17/03/2027",
+    "planilha": "01/04/2027",
+    "link": "https://www.seletaeducacao.com.br/obgp"
+   },
+   {
+    "sigla": "OBGP.1",
+    "edicao": "2027.1",
+    "coluna": "Resultado",
+    "etapa": "Resultado",
+    "oficial": "24/03/2027",
+    "planilha": "08/04/2027",
+    "link": "https://www.seletaeducacao.com.br/obgp"
+   },
+   {
+    "sigla": "OBMF.1",
+    "edicao": "2027.1",
+    "coluna": "Inscrição (fim)",
+    "etapa": "Inscrição (fim)",
+    "oficial": "31/03/2027",
+    "planilha": "08/04/2027",
+    "link": "https://www.seletaeducacao.com.br/obmf"
+   },
+   {
+    "sigla": "OBMF.1",
+    "edicao": "2027.1",
+    "coluna": "1ª Fase (início)",
+    "etapa": "Prova (1ª Fase)",
+    "oficial": "07/04/2027",
+    "planilha": "15/04/2027",
+    "link": "https://www.seletaeducacao.com.br/obmf"
+   },
+   {
+    "sigla": "OBMF.1",
+    "edicao": "2027.1",
+    "coluna": "Resultado",
+    "etapa": "Resultado",
+    "oficial": "14/04/2027",
+    "planilha": "22/04/2027",
+    "link": "https://www.seletaeducacao.com.br/obmf"
+   },
+   {
+    "sigla": "OBNE",
+    "edicao": "2027",
+    "coluna": "Inscrição (fim)",
+    "etapa": "Inscrição (fim)",
+    "oficial": "26/05/2027",
+    "planilha": "27/05/2027",
+    "link": "https://www.seletaeducacao.com.br/obne"
+   },
+   {
+    "sigla": "OBNE",
+    "edicao": "2027",
+    "coluna": "1ª Fase (início)",
+    "etapa": "Prova (1ª Fase)",
+    "oficial": "02/06/2027",
+    "planilha": "03/06/2027",
+    "link": "https://www.seletaeducacao.com.br/obne"
+   },
+   {
+    "sigla": "OBNE",
+    "edicao": "2027",
+    "coluna": "Resultado",
+    "etapa": "Resultado",
+    "oficial": "09/06/2027",
+    "planilha": "10/06/2027",
+    "link": "https://www.seletaeducacao.com.br/obne"
+   },
+   {
+    "sigla": "TNBIO",
+    "edicao": "2027",
+    "coluna": "Inscrição (início)",
+    "etapa": "Inscrição (início)",
+    "oficial": "23/11/2026",
+    "planilha": "25/11/2026",
+    "link": "https://www.seletaeducacao.com.br/tnbio"
+   },
+   {
+    "sigla": "TNBIO",
+    "edicao": "2027",
+    "coluna": "Inscrição (fim)",
+    "etapa": "Inscrição (fim)",
+    "oficial": "25/08/2027",
+    "planilha": "13/05/2027",
+    "link": "https://www.seletaeducacao.com.br/tnbio"
+   },
+   {
+    "sigla": "TNBIO",
+    "edicao": "2027",
+    "coluna": "1ª Fase (início)",
+    "etapa": "Prova (1ª Fase)",
+    "oficial": "01/09/2027",
+    "planilha": "20/05/2027",
+    "link": "https://www.seletaeducacao.com.br/tnbio"
+   },
+   {
+    "sigla": "TNBIO",
+    "edicao": "2027",
+    "coluna": "Resultado",
+    "etapa": "Resultado",
+    "oficial": "08/09/2027",
+    "planilha": "27/05/2027",
+    "link": "https://www.seletaeducacao.com.br/tnbio"
+   },
+   {
+    "sigla": "CANGURU",
+    "edicao": "2027",
+    "coluna": "Inscrição (início)",
+    "etapa": "Inscrição (início)",
+    "oficial": "17/11/2026",
+    "planilha": "01/12/2026",
+    "link": "https://www.cangurudematematicabrasil.com.br/"
+   },
+   {
+    "sigla": "CANGURU",
+    "edicao": "2027",
+    "coluna": "1ª Fase (início)",
+    "etapa": "Prova (data oficial)",
+    "oficial": "18/03/2027",
+    "planilha": "19/03/2027",
+    "link": "https://www.cangurudematematicabrasil.com.br/"
+   },
+   {
+    "sigla": "CANGURU",
+    "edicao": "2027",
+    "coluna": "1ª Fase (fim)",
+    "etapa": "Prova (último dia do período alternativo)",
+    "oficial": "24/03/2027",
+    "planilha": "25/03/2027",
+    "link": "https://www.cangurudematematicabrasil.com.br/"
+   },
+   {
+    "sigla": "CANGURU",
+    "edicao": "2027",
+    "coluna": "Resultado",
+    "etapa": "Resultado",
+    "oficial": "01/06/2027",
+    "planilha": "02/06/2027",
+    "link": "https://www.cangurudematematicabrasil.com.br/"
+   },
+   {
+    "sigla": "OLITEF",
+    "edicao": "2027",
+    "coluna": "Inscrição (início)",
+    "etapa": "Inscrição (início)",
+    "oficial": "19/11/2026",
+    "planilha": "01/12/2026",
+    "link": "https://www.olitef.com.br/"
+   },
+   {
+    "sigla": "OLITEF",
+    "edicao": "2027",
+    "coluna": "Inscrição (fim)",
+    "etapa": "Inscrição (fim)",
+    "oficial": "01/09/2027",
+    "planilha": "01/09/2027",
+    "link": "https://www.olitef.com.br/"
+   },
+   {
+    "sigla": "OLITEF",
+    "edicao": "2027",
+    "coluna": "Resultado",
+    "etapa": "Resultado",
+    "oficial": "29/10/2027",
+    "planilha": "30/10/2027",
+    "link": "https://www.olitef.com.br/"
+   }
+  ],
+  "encerradas": [],
+  "semEdital": [],
+  "observacoes": [
+   {
+    "sigla": "OLITEF",
+    "texto": "O cronograma oficial 2027 diz só \"Setembro/2027\" para a prova e envio das respostas até 30/09/2027; a planilha mantém a prova prevista de 08 a 12/09.",
+    "veiculo": "site oficial",
+    "link": "https://www.olitef.com.br/"
+   },
+   {
+    "sigla": "TNBIO",
+    "texto": "A edição 2027 mudou para o 2º semestre (prova em setembro), bem diferente da previsão de maio.",
+    "veiculo": "site oficial",
+    "link": "https://www.seletaeducacao.com.br/tnbio"
+   },
+   {
+    "sigla": "CANGURU",
+    "texto": "Prova em 18/03/2027 (data oficial) ou de 19 a 24/03/2027; o site não mostra o fim das inscrições.",
+    "veiculo": "site oficial",
+    "link": "https://www.cangurudematematicabrasil.com.br/"
+   }
+  ],
+  "manual": [
+   {
+    "prioridade": "alta",
+    "titulo": "OBB – Olimpíada Brasileira de Biologia",
+    "oque": "O site oficial não abriu. A 1ª fase costuma ser no início de março: conferir se já há regulamento ou inscrições 2027.",
+    "link": "https://olimpiadasdebiologia.butantan.gov.br/"
+   },
+   {
+    "prioridade": "média",
+    "titulo": "OL.1 – Olimpíada de Literatura",
+    "oque": "O site mostra competições com inscrições até 22/01/2027 e evento em 02/02/2027, sem dizer se são a 17ª edição. Conferir no regulamento.",
+    "link": "https://www.olimpiadadeliteratura.com.br/"
+   }
+  ],
+  "semNovidade": [
+   "OBMEP",
+   "OP",
+   "OP BÊ À BÁ",
+   "MANDACARU",
+   "OBA",
+   "OBAFOG",
+   "OMU",
+   "OBI",
+   "OI.1",
+   "OE.1"
+  ]
+ }
+}

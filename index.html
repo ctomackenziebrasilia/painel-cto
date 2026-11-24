@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://docs.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>Painel semanal · Calendário Olímpico CTO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE: painel de trabalho da equipe do CTO, claro e direto, foco em decidir.
+   IDEA: a folha de conferência semanal presa no mural do CTO: decisões, agenda, editais.
+   PICTURE: cartões das candidatas com botões de decisão + agenda mensal com dias grandes.
+   COLOUR and TYPE: vermelho Mackenzie suavizado, branco, tinta escura, âmbar para "decidir"; Public Sans.
+   LAYOUT: faixa vermelha com números, navegação, quatro seções empilhadas, barra fixa de decisões. */
+:root{color-scheme:light dark;
+--bg:light-dark(#ffffff,#141113);--ink:light-dark(#1d1a1b,#efe9ea);--soft:light-dark(#5f5759,#b9b0b2);
+--line:light-dark(#e6dfe0,#332d2f);--card:light-dark(#faf7f7,#1d191b);
+--red:light-dark(#8e2b2e,#c9575a);--band:#8e2b2e;--amber:light-dark(#9a5b00,#f0b34a);--amberbg:light-dark(#fff3dc,#3a2a10);
+--green:light-dark(#1f6b45,#6fcf9a);--greenbg:light-dark(#e3f3ea,#14301f);--grey:light-dark(#6b6466,#a39b9d);--greybg:light-dark(#efeaeb,#2a2527)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Public Sans",system-ui,sans-serif;overflow-x:clip}
+a{color:var(--red)}
+.band{padding:clamp(24px,4vw,56px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+header{background:var(--band);color:#fff}
+header h1{font-size:clamp(30px,5vw,48px);line-height:1.05;margin:0 0 8px;text-wrap:balance;font-weight:800}
+header p{margin:0;opacity:.9;max-width:62ch}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:24px}
+.stat{background:rgba(255,255,255,.1);border-radius:12px;padding:14px 16px}
+.stat b{display:block;font-size:clamp(30px,4.5vw,44px);line-height:1;font-weight:800}
+.stat span{font-size:14px;opacity:.92}
+nav{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;gap:4px;overflow-x:auto;padding:6px max(5vw,16px)}
+nav a{flex:none;text-decoration:none;color:var(--ink);padding:10px 14px;border-radius:999px;font-weight:600;font-size:15px}
+nav a:hover{background:var(--greybg)}
+h2{font-size:32px;line-height:1.1;margin:0 0 6px}
+.lead{color:var(--soft);margin:0 0 18px;max-width:70ch}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.chip{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:8px 14px;min-height:40px;font:600 14px "Public Sans",sans-serif;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.cand{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.cand[data-d=Cadastrar]{border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green)}
+.cand[data-d=Descartada]{opacity:.55}
+.cand[data-d="Em análise"]{border-color:var(--amber)}
+.top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.cand h3{margin:0;font-size:19px;line-height:1.2}
+.cand .nome{color:var(--soft);font-size:14px}
+.new{font-size:12px;font-weight:800;color:var(--amber);background:var(--amberbg);padding:2px 8px;border-radius:6px;white-space:nowrap}
+.segs{display:flex;gap:4px}
+.seg{font-size:12px;font-weight:700;padding:2px 7px;border-radius:6px;border:1px solid var(--line);color:var(--grey)}
+.seg.on{background:var(--red);border-color:var(--red);color:#fff}
+.tags{display:flex;flex-wrap:wrap;gap:6px;font-size:13px}
+.tag{padding:2px 8px;border-radius:6px;background:var(--greybg);color:var(--soft)}
+.tag.gratuita{background:var(--greenbg);color:var(--green)}
+.tag.paga,.tag.escola{background:var(--amberbg);color:var(--amber)}
+.alert{font-size:13px;color:var(--amber);font-weight:600}
+.alert::before{content:"! ";}
+.prox{font-size:14px}
+.obs{font-size:13px;color:var(--soft);margin:0}
+.dec{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:auto;padding-top:6px}
+.dec button{min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:600 14px "Public Sans",sans-serif;cursor:pointer}
+.dec button[aria-pressed=true][data-v=Cadastrar]{background:var(--green);color:#fff;border-color:var(--green)}
+.dec button[aria-pressed=true][data-v="Em análise"]{background:var(--amber);color:#fff;border-color:var(--amber)}
+.dec button[aria-pressed=true][data-v=Descartada]{background:var(--grey);color:#fff;border-color:var(--grey)}
+button:focus-visible,.chip:focus-visible,a:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.bar{position:sticky;bottom:0;z-index:6;background:var(--ink);color:var(--bg);padding:12px max(5vw,16px);display:none;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.bar.show{display:flex}
+.bar button{min-height:44px;border:0;border-radius:10px;padding:0 16px;font:700 15px "Public Sans",sans-serif;cursor:pointer;background:var(--bg);color:var(--ink)}
+.bar .ghost{background:transparent;color:var(--bg);border:1px solid currentColor}
+.month{margin-bottom:22px}
+.month h3{font-size:20px;margin:0 0 8px;padding-bottom:6px;border-bottom:2px solid var(--red)}
+.ev{display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px;padding:8px 0;border-bottom:1px solid var(--line);align-items:center}
+.day{font-size:30px;font-weight:800;line-height:1;text-align:right;color:var(--red)}
+.day small{display:block;font-size:12px;font-weight:600;color:var(--soft)}
+.ev .what{font-size:15px}
+.ev .what b{font-size:16px}
+.ev.cand-ev .day{color:var(--amber)}
+.kind{font-size:12px;font-weight:700;padding:1px 7px;border-radius:6px;margin-left:6px;white-space:nowrap}
+.kind.of{background:var(--greenbg);color:var(--green)}
+.kind.pr{background:var(--greybg);color:var(--soft)}
+.kind.cd{background:var(--amberbg);color:var(--amber)}
+.more{min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);padding:0 18px;font:600 15px "Public Sans",sans-serif;cursor:pointer}
+.meter{display:flex;height:34px;border-radius:10px;overflow:hidden;margin:8px 0 10px}
+.meter div{display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:14px;color:var(--soft);margin-bottom:16px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.sig{display:flex;flex-wrap:wrap;gap:6px}
+.sig a{font-size:13px;font-weight:700;padding:5px 9px;border-radius:8px;text-decoration:none;color:#fff}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.box h3{margin:0 0 8px;font-size:18px}
+.box ul{margin:0;padding-left:20px}
+.pri{font-size:12px;font-weight:800;padding:2px 8px;border-radius:6px;margin-right:6px}
+.pri.alta{background:var(--red);color:#fff}.pri.média{background:var(--amberbg);color:var(--amber)}.pri.baixa{background:var(--greybg);color:var(--soft)}
+.man li{margin-bottom:10px}
+.btn{min-height:44px;border:0;border-radius:10px;padding:0 16px;background:var(--red);color:#fff;font:700 15px "Public Sans",sans-serif;cursor:pointer}
+.btn:disabled{opacity:.6}
+.apl-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0 12px}
+.dif{width:100%;border-collapse:collapse;font-size:14px}.dif th{text-align:left;font-size:12px;color:var(--soft);font-weight:600;padding:2px 4px}
+.dif td{padding:5px 4px;border-top:1px solid var(--line);white-space:nowrap}.dif td:first-child{white-space:normal}
+.dif .old{color:var(--soft);text-decoration:line-through}
+.okb{font-size:12px;font-weight:800;color:var(--green);background:var(--greenbg);padding:2px 8px;border-radius:6px}
+.cand.feito{border-color:var(--green)}.msg{font-size:14px;color:var(--amber);font-weight:600}.msg:empty{display:none}
+#editBoxes .grid{margin-bottom:18px}
+.gate{position:fixed;inset:0;z-index:20;background:var(--band);color:#fff;display:flex;align-items:center;justify-content:center;padding:24px}
+.gate form,.modal form{width:min(420px,100%);display:flex;flex-direction:column;gap:12px}
+.gate h1{font-size:clamp(28px,6vw,40px);line-height:1.1;margin:0}
+.gate p{margin:0;opacity:.92}
+.gate input,.modal input,.motivo{font:16px "Public Sans",sans-serif;min-height:48px;border-radius:10px;border:1px solid var(--line);padding:0 14px;background:var(--bg);color:var(--ink)}
+.gate button{min-height:48px;border:0;border-radius:10px;background:#fff;color:var(--band);font:800 16px "Public Sans",sans-serif;cursor:pointer}
+.gate .err,.modal .err{font-weight:700;min-height:1.2em}
+.gate .err{color:#ffd9a8}.modal .err{color:var(--amber)}
+.modal{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:20px}
+.modal.show{display:flex}
+.modal .box{width:min(440px,100%);margin:0}
+.modal .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.modal .ghost2{min-height:44px;border:1px solid var(--line);border-radius:10px;padding:0 16px;background:var(--bg);color:var(--ink);font:600 15px "Public Sans",sans-serif;cursor:pointer}
+.motivo{min-height:40px;font-size:14px;width:100%}
+.hidden{display:none!important}
+.sair{background:transparent;border:1px solid rgba(255,255,255,.6);color:#fff;border-radius:999px;padding:6px 14px;font:600 14px "Public Sans",sans-serif;cursor:pointer;min-height:36px}
+.toprow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.loading{padding:40px 0;color:var(--soft)}
+footer{color:var(--soft);font-size:14px;border-top:1px solid var(--line)}
+.empty{color:var(--soft);font-style:italic}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}h2{font-size:26px}}
+@media(prefers-reduced-motion:no-preference){.cand{transition:opacity .2s,border-color .2s}}
+</style>
+</head>
+<body>
+<div class="gate" id="gate"><form id="gateForm" autocomplete="off">
+ <h1>Painel semanal do Calendário Olímpico</h1>
+ <p>Área da equipe do CTO. Digite a senha de entrada.</p>
+ <input type="password" id="gateSenha" aria-label="Senha" placeholder="Senha" autocomplete="current-password">
+ <button type="submit" id="gateBtn">Entrar</button>
+ <div class="err" id="gateErr" role="alert"></div>
+</form></div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTit"><div class="box"><form id="modalForm" autocomplete="off">
+ <h3 id="modalTit">Senha de gravação</h3>
+ <p class="obs" id="modalTxt">Para mudar a planilha, digite a senha de gravação. Ela fica guardada só enquanto esta página estiver aberta.</p>
+ <input type="password" id="modalSenha" aria-label="Senha de gravação" placeholder="Senha de gravação">
+ <div class="err" id="modalErr" role="alert"></div>
+ <div class="row"><button type="button" class="ghost2" id="modalCancel">Cancelar</button><button type="submit" class="btn">Confirmar</button></div>
+</form></div></div>
+
+<header class="band"><div class="wrap">
+ <div class="toprow"><h1 id="titulo">Verificação semanal do Calendário Olímpico</h1><button class="sair" id="sair">Sair</button></div>
+ <p id="sub">Carregando…</p>
+ <div class="stats" id="stats"></div>
+</div></header>
+<nav><div class="wrap"><a href="#decidir">Decidir</a><a href="#agenda">Calendário</a><a href="#editais">Editais</a><a href="#manual">Verificar à mão</a></div></nav>
+
+<main>
+<section class="band" id="decidir"><div class="wrap">
+ <h2>Olimpíadas novas para decidir</h2>
+ <p class="lead">Candidatas que a tarefa semanal achou e que ainda não estão no calendário. A decisão fica gravada na aba Radar da planilha. Quem marcar "Cadastrar" depois pede ao Claude: "cadastrar no calendário as olimpíadas marcadas como Cadastrar no radar".</p>
+ <div class="chips" id="filtros"></div>
+ <div class="grid" id="cards"><p class="loading">Carregando…</p></div>
+</div></section>
+
+<section class="band" id="agenda" style="background:var(--card)"><div class="wrap">
+ <h2>Calendário dos próximos meses</h2>
+ <p class="lead">Datas da planilha (olimpíadas cadastradas) e datas conhecidas das candidatas. "Oficial" = confirmada em fonte oficial; "previsto" = copiada da edição anterior.</p>
+ <div class="chips" id="segf"></div>
+ <div id="meses"></div>
+ <button class="more" id="maisMeses">Mostrar mais meses</button>
+</div></section>
+
+<section class="band" id="editais"><div class="wrap">
+ <h2>Editais das olimpíadas cadastradas</h2>
+ <p class="lead" id="editLead"></p>
+ <div class="meter" id="meter"></div>
+ <div class="legend" id="legend"></div>
+ <div id="editBoxes"></div>
+ <div class="sig" id="sigs"></div>
+</div></section>
+
+<section class="band" id="manual" style="background:var(--card)"><div class="wrap">
+ <h2>Verificar à mão</h2>
+ <p class="lead">Sites ou editais que a tarefa não conseguiu abrir ou confirmar. Em ordem de prioridade.</p>
+ <div id="manBox"></div>
+</div></section>
+</main>
+<footer class="band"><div class="wrap" id="foot"></div></footer>
+<script src="app.js"></script>
+</body>
+</html>
