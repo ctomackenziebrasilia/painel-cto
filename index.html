@@ -6,6 +6,8 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://docs.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' data:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="apple-touch-icon" href="logo-cto.webp">
 <title>Painel semanal · Calendário Olímpico CTO</title>
 <link rel="icon" href="logo-cto.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -214,6 +216,11 @@ select.motivo{padding:0 8px}
   .canvas{padding:14px 12px calc(var(--ui-nav-h) + 20px + env(safe-area-inset-bottom))}
   .ui-bottom-nav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--ui-nav-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:var(--ui-surface);border-top:1px solid var(--ui-line)}
   .hide-m{display:none!important}
+  .motivo,select.motivo{font-size:16px;height:42px}
+  .dec button,.btn,.ui-btn,.ghost2{height:42px}
+  .chip{height:36px}
+  .ui-icon-btn{width:40px;height:40px}
+  .man-item .ui-btn{height:38px}
 }
 @media (max-width:600px){
   .stats-m{grid-template-columns:repeat(2,minmax(0,1fr))}
