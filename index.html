@@ -129,6 +129,14 @@ select.motivo{padding:0 8px}
 .dec button[aria-pressed=true][data-v=Descartada]{background:#E2E8F0;border-color:#94A3B8;color:#334155}
 .msg{font-size:12.5px;font-weight:600;color:var(--wait-tx)}
 .msg:empty{display:none}
+.msg.ok{color:var(--ok-tx)}
+.desfazer{align-self:flex-start;height:32px;font-size:12.5px}
+.lbl{font-size:12px;font-weight:600;color:#475569;margin-bottom:-6px}
+.ajuda .box{margin:0}
+.ajuda .box h3{font-size:15px}
+.ajuda ol,.ajuda ul{margin:0;padding-left:20px;font-size:13.5px;color:#334155;line-height:1.6}
+.ajuda li{margin-bottom:4px}
+.ajuda .grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
 .cadbox{background:var(--ui-soft);margin:0}
 .cadbox label{display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:-4px}
 .cadbox ul{color:#334155;font-size:12.5px}
@@ -220,13 +228,13 @@ select.motivo{padding:0 8px}
   .dec button,.btn,.ui-btn,.ghost2{height:42px}
   .chip{height:36px}
   .ui-icon-btn{width:40px;height:40px}
-  .man-item .ui-btn{height:38px}
+  .man-item .ui-btn,.desfazer{height:38px}
 }
 @media (max-width:600px){
   .stats-m{grid-template-columns:repeat(2,minmax(0,1fr))}
   .ui-app-subtitle{display:none}
   .t-long{display:none}.t-short{display:inline}
-  .grid,.man{grid-template-columns:minmax(0,1fr)}
+  .grid,.man,.ajuda .grid2{grid-template-columns:minmax(0,1fr)}
   .chips{width:auto}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -244,8 +252,11 @@ select.motivo{padding:0 8px}
 
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTit"><div class="box"><form id="modalForm" autocomplete="off">
  <h3 id="modalTit">Senha de gravação</h3>
- <p class="obs" id="modalTxt">Para mudar a planilha, digite a senha de gravação. Ela fica guardada só enquanto esta página estiver aberta.</p>
- <input type="password" id="modalSenha" aria-label="Senha de gravação" placeholder="Senha de gravação">
+ <p class="obs" id="modalTxt">Para mudar a planilha, digite seu nome e a senha de gravação. O nome fica anotado no registro de cada gravação; a senha fica guardada só enquanto esta página estiver aberta.</p>
+ <label class="lbl" for="modalNome">Seu nome</label>
+ <input type="text" id="modalNome" placeholder="Ex.: Wilson" autocomplete="name" maxlength="60">
+ <label class="lbl" for="modalSenha">Senha de gravação</label>
+ <input type="password" id="modalSenha" placeholder="Senha de gravação">
  <div class="err" id="modalErr" role="alert"></div>
  <div class="row"><button type="button" class="ghost2" id="modalCancel">Cancelar</button><button type="submit" class="btn">Confirmar</button></div>
 </form></div></div>
@@ -291,9 +302,42 @@ select.motivo{padding:0 8px}
    <div class="pane-head"><div><h2>Verificar à mão</h2><p class="lead">Sites ou editais que a tarefa não conseguiu abrir ou confirmar, por prioridade.</p></div></div>
    <div id="manBox"></div>
   </section>
+  <section class="pane hidden ajuda" data-pane="ajuda">
+   <div class="pane-head"><div><h2>Como usar o painel</h2><p class="lead">Guia rápido para a equipe do CTO. Dúvidas maiores: fale com o Wilson.</p></div></div>
+   <div class="grid2">
+    <div class="box"><h3>O que é</h3><ul>
+     <li>Toda segunda, às 16h24, uma tarefa automática confere os editais das olimpíadas do calendário e procura olimpíadas novas.</li>
+     <li>O resultado aparece aqui. A equipe só decide e clica: nada muda na planilha sem a senha de gravação.</li>
+     <li>As olimpíadas e o radar são lidos da planilha na hora. Use <b>Recarregar</b> (no topo) para ver mudanças feitas por outra pessoa.</li></ul></div>
+    <div class="box"><h3>Senhas</h3><ul>
+     <li><b>Senha de entrada:</b> só para ver o painel. Este aparelho lembra por 30 dias; <b>Sair</b> apaga.</li>
+     <li><b>Senha de gravação:</b> pedida na primeira gravação, junto com o seu nome. O nome fica anotado na aba "Registro do painel".</li>
+     <li>Não compartilhe as senhas com alunos ou famílias. Se alguém sair da equipe, o responsável troca as senhas.</li></ul></div>
+    <div class="box"><h3>Olimpíadas novas</h3><ol>
+     <li>Leia o cartão: segmentos, custo, próxima edição e os avisos em laranja (o que ainda precisa ser conferido).</li>
+     <li><b>Cadastrar</b> mostra o que vai entrar no calendário (área, anos e datas). Confira e clique em <b>Confirmar cadastro</b>: a olimpíada vai para a planilha e aparece no site na hora; nas agendas, em até 2 horas.</li>
+     <li><b>Em análise</b> ou <b>Descartar</b> guardam a decisão no Radar. Use o campo "Motivo" para explicar. Clicar de novo no mesmo botão volta para "Nova".</li></ol></div>
+    <div class="box"><h3>Editais (datas oficiais)</h3><ol>
+     <li>Cada cartão mostra a data que está na planilha (riscada) e a data oficial encontrada, com o link da fonte.</li>
+     <li>Abra a <b>fonte oficial</b> se quiser conferir e clique em <b>Aplicar na planilha</b> (ou "Aplicar todas").</li>
+     <li>Etiqueta <b>"Data oficial mudou"</b>: o organizador mudou uma data que já era oficial. Confira antes de aplicar.</li>
+     <li>Se aparecer "a planilha mudou desde a verificação", alguém já mexeu naquela linha: confira e clique de novo só se tiver certeza.</li></ol></div>
+    <div class="box"><h3>Errou? Use Desfazer</h3><ul>
+     <li>Depois de cada gravação aparece o botão <b>Desfazer</b>, que volta a planilha ao que era antes.</li>
+     <li>Ele fica disponível enquanto a página estiver aberta (até 72 horas). Se alguém mexeu nas mesmas células depois, o painel avisa antes.</li>
+     <li>Fechou a página? Peça ao Wilson: dá para corrigir pela aba "Registro do painel".</li></ul></div>
+    <div class="box"><h3>Calendário e Verificar à mão</h3><ul>
+     <li><b>Calendário:</b> próximas datas da planilha. "Oficial" = confirmada na fonte; "previsto" = copiada da edição anterior; "candidata" = olimpíada ainda não cadastrada.</li>
+     <li><b>Verificar à mão:</b> sites que a tarefa não conseguiu abrir. Abra o link, confira e avise o Wilson do que encontrar.</li></ul></div>
+    <div class="box"><h3>Se der erro</h3><ul>
+     <li>"Senha incorreta" várias vezes bloqueia as tentativas por 15 minutos.</li>
+     <li>Página sem dados: clique em Recarregar ou abra de novo (no computador, Ctrl+F5).</li>
+     <li>Qualquer outra mensagem: tire um print e mande ao Wilson.</li></ul></div>
+   </div>
+  </section>
  </main>
 </div>
 <nav class="ui-bottom-nav" id="bottomnav"></nav>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>

@@ -4,7 +4,9 @@
 //   - conferir a senha de ENTRADA (ver o painel) e a senha de GRAVAÇÃO (mudar a planilha);
 //   - aplicar na aba Eventos as datas oficiais encontradas pela tarefa semanal;
 //   - registrar na aba Radar a decisão da equipe sobre cada olimpíada nova;
-//   - CADASTRAR uma olimpíada do Radar direto no calendário (abas Olimpiadas e Eventos).
+//   - CADASTRAR uma olimpíada do Radar direto no calendário (abas Olimpiadas e Eventos);
+//   - DESFAZER uma gravação feita pelo painel (até 72 horas depois, se ninguém mexeu nas mesmas células).
+// O nome de quem gravou (digitado no painel) vai para a aba "Registro do painel".
 // As senhas ficam guardadas só aqui (resumo criptográfico nas Propriedades do script), nunca no site.
 // Cada gravação fica anotada na aba "Registro do painel".
 //
@@ -28,6 +30,8 @@ const ETAPAS_PAINEL = ['Inscrição', 'Divulgação aos alunos', '1ª Fase', '2�
 const SITUACOES_RADAR_PAINEL = ['Nova', 'Em análise', 'Cadastrar', 'Descartada'];
 const AREAS_PAINEL = ['Matemática', 'Ciências da Natureza', 'Ciências Humanas', 'Linguagens', 'Tecnologia', 'Multidisciplinar / Negócios'];
 const CUSTO_PAINEL = {'Gratuita': 'Gratuita', 'Paga por aluno': 'Paga por Aluno', 'Taxa por escola': 'Taxa Única por Escola'};
+let AUTOR_PAINEL = '', LOG_PAINEL = [];
+const DESFAZER_HORAS_PAINEL = 72; // por quanto tempo uma gravação pode ser desfeita
 const MAX_ERROS_PAINEL = 8;          // tentativas erradas de senha...
 const BLOQUEIO_SEG_PAINEL = 15 * 60; // ...bloqueiam novas tentativas por 15 minutos
 
@@ -92,6 +96,8 @@ function doPost(e) {
   try { pedido = JSON.parse(e.postData.contents); } catch (err) { return jsonPainel_({ok: false, erro: 'pedido_invalido'}); }
   if (bloqueadoPainel_()) return jsonPainel_({ok: false, erro: 'bloqueado', msg: 'Muitas senhas erradas. Tente de novo em 15 minutos.'});
   const acao = String(pedido.acao || '');
+  AUTOR_PAINEL = String(pedido.autor || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 60);
+  LOG_PAINEL = [];
   const gravar = acao !== 'entrar';
   const okGravacao = confereSenhaPainel_('gravacao', pedido.senha);
   const okEntrada = okGravacao || confereSenhaPainel_('entrada', pedido.senha);
@@ -106,6 +112,7 @@ function doPost(e) {
     if (acao === 'aplicarDatas') return jsonPainel_(aplicarDatasPainel_(pedido));
     if (acao === 'decidirRadar') return jsonPainel_(decidirRadarPainel_(pedido));
     if (acao === 'cadastrarRadar') return jsonPainel_(cadastrarRadarPainel_(pedido));
+    if (acao === 'desfazer') return jsonPainel_(desfazerPainel_(pedido));
     return jsonPainel_({ok: false, erro: 'acao_desconhecida'});
   } catch (err) {
     console.error(err);
@@ -154,7 +161,7 @@ function aplicarDatasPainel_(p) {
   if (conflitos.length && !p.forcar) return {ok: false, erro: 'conflito', conflitos};
 
   const linha = r + 1;
-  for (const [c, d] of novos) aba.getRange(linha, c + 1).setValue(d);
+  for (const [c, d] of novos) gravarPainel_(aba, linha, c + 1, d);
 
   const etapas = new Set(String(valores[r][col('Etapas confirmadas')] || '').split(',').map(s => s.trim()).filter(Boolean));
   novos.forEach(n => etapas.add(n[3].replace(/ \((início|fim)\)$/, '')));
@@ -168,19 +175,19 @@ function aplicarDatasPainel_(p) {
   if (tudo) det = det.replace(/Previsão com base.*?\.(?=\s|$)\s*/g, '');
   det = (det + ` Datas oficiais conferidas em ${verif} (painel): ${listaEtapas.join(', ')}.`).trim();
 
-  aba.getRange(linha, col('Etapas confirmadas') + 1).setValue(listaEtapas.join(', '));
-  aba.getRange(linha, col('Fonte das datas') + 1).setValue(link);
-  aba.getRange(linha, col('Detalhes') + 1).setValue(det);
+  gravarPainel_(aba, linha, col('Etapas confirmadas') + 1, listaEtapas.join(', '));
+  gravarPainel_(aba, linha, col('Fonte das datas') + 1, link);
+  gravarPainel_(aba, linha, col('Detalhes') + 1, det);
   const situacaoAntes = String(valores[r][col('Situação')]);
-  if (tudo && situacaoAntes !== 'Cancelado') aba.getRange(linha, col('Situação') + 1).setValue('Confirmado');
+  if (tudo && situacaoAntes !== 'Cancelado') gravarPainel_(aba, linha, col('Situação') + 1, 'Confirmado');
   SpreadsheetApp.flush();
 
   // Lê de volta para conferir.
   const depois = aba.getRange(linha, 1, 1, tit.length).getDisplayValues()[0];
   const falhas = novos.filter(n => depois[n[0]] !== n[2]).map(n => `${n[3]} ficou ${depois[n[0]] || 'vazio'}`);
   registrarPainel_('Aplicar datas', sigla, novos.map(n => `${n[3]}=${n[2]}`).join('; ') + (conflitos.length ? ' (gravado mesmo com conflito)' : ''));
-  if (falhas.length) return {ok: false, erro: 'conferencia', msg: 'Gravei, mas a conferência mostrou: ' + falhas.join('; ')};
-  return {ok: true, etapas: listaEtapas.join(', '), confirmado: tudo};
+  if (falhas.length) return {ok: false, erro: 'conferencia', msg: 'Gravei, mas a conferência mostrou: ' + falhas.join('; '), desfazer: guardarDesfazerPainel_('Aplicar datas', sigla)};
+  return {ok: true, etapas: listaEtapas.join(', '), confirmado: tudo, desfazer: guardarDesfazerPainel_('Aplicar datas', sigla)};
 }
 
 // pedido: {sigla, situacao, motivo}
@@ -201,11 +208,11 @@ function decidirRadarPainel_(p) {
   if (r < 0) return {ok: false, erro: 'dados', msg: `Sigla ${sigla} não encontrada na aba Radar.`};
   if (String(valores[r][col('Situação')]) === 'Cadastrada') return {ok: false, erro: 'dados', msg: 'Esta olimpíada já foi cadastrada no calendário.'};
   const linha = r + 1;
-  aba.getRange(linha, col('Situação') + 1).setValue(situacao);
-  aba.getRange(linha, col('Motivo') + 1).setValue(motivo);
-  aba.getRange(linha, col('Decidido em') + 1).setValue(Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm'));
+  gravarPainel_(aba, linha, col('Situação') + 1, situacao);
+  gravarPainel_(aba, linha, col('Motivo') + 1, motivo);
+  gravarPainel_(aba, linha, col('Decidido em') + 1, Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm') + (AUTOR_PAINEL ? ' – ' + AUTOR_PAINEL : ''));
   registrarPainel_('Decisão no radar', sigla, situacao + (motivo ? ' – ' + motivo : ''));
-  return {ok: true};
+  return {ok: true, desfazer: guardarDesfazerPainel_('Decisão no radar', sigla)};
 }
 
 // pedido: {sigla, area (opcional; senão usa "Área no calendário" da aba Radar), motivo}
@@ -258,25 +265,25 @@ function cadastrarRadarPainel_(p) {
     'EFAF': segs.indexOf('EFAF') >= 0 ? 'OK' : '', 'EM': segs.indexOf('EM') >= 0 ? 'OK' : '',
     'Do ano': R('Do ano'), 'Até o ano': R('Até o ano'), 'Site oficial': /^https?:\/\//i.test(R('Fonte oficial')) ? R('Fonte oficial') : '',
     'Modalidade': R('Modalidade'), 'Custo': CUSTO_PAINEL[R('Tipo de custo')] || '', 'Inscrição por': R('Inscrição por'), 'Observações': obs};
-  for (const [t, v] of Object.entries(valoresO)) if (oc(t) >= 0 && v !== '') olim.getRange(lo, oc(t) + 1).setValue(v);
+  for (const [t, v] of Object.entries(valoresO)) if (oc(t) >= 0 && v !== '') gravarPainel_(olim, lo, oc(t) + 1, v);
 
   // 2) Eventos
   const et = eventos.getRange(1, 1, 1, eventos.getLastColumn()).getDisplayValues()[0].map(v => String(v).trim()), ec = t => et.indexOf(t);
   const le = primeiraLinhaLivrePainel_(eventos, ec('Sigla') + 1);
   const det = [R('Detalhes para cadastro'), `Cadastrada pelo painel em ${hoje}.`].filter(Boolean).join(' ');
   const valoresE = {'Sigla': sigla, 'Situação': situacao, 'Etapas confirmadas': etapas.join(', '), 'Detalhes': det, 'Fonte das datas': link};
-  for (const [t, v] of Object.entries(valoresE)) if (ec(t) >= 0 && v !== '') eventos.getRange(le, ec(t) + 1).setValue(v);
-  for (const [col, d] of datas) if (ec(col) >= 0) eventos.getRange(le, ec(col) + 1).setValue(d);
+  for (const [t, v] of Object.entries(valoresE)) if (ec(t) >= 0 && v !== '') gravarPainel_(eventos, le, ec(t) + 1, v);
+  for (const [col, d] of datas) if (ec(col) >= 0) gravarPainel_(eventos, le, ec(col) + 1, d);
 
   // 3) Radar
   const lr = r + 1;
-  radar.getRange(lr, rc('Situação') + 1).setValue('Cadastrada');
-  if (rc('Decidido em') >= 0) radar.getRange(lr, rc('Decidido em') + 1).setValue(Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm'));
-  if (rc('Motivo') >= 0 && p.motivo) radar.getRange(lr, rc('Motivo') + 1).setValue(String(p.motivo).slice(0, 500));
-  if (rc('Área no calendário') >= 0 && area !== R('Área no calendário')) radar.getRange(lr, rc('Área no calendário') + 1).setValue(area);
+  gravarPainel_(radar, lr, rc('Situação') + 1, 'Cadastrada');
+  if (rc('Decidido em') >= 0) gravarPainel_(radar, lr, rc('Decidido em') + 1, Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm') + (AUTOR_PAINEL ? ' – ' + AUTOR_PAINEL : ''));
+  if (rc('Motivo') >= 0 && p.motivo) gravarPainel_(radar, lr, rc('Motivo') + 1, String(p.motivo).slice(0, 500));
+  if (rc('Área no calendário') >= 0 && area !== R('Área no calendário')) gravarPainel_(radar, lr, rc('Área no calendário') + 1, area);
   SpreadsheetApp.flush();
   registrarPainel_('Cadastro no calendário', sigla, `Olimpiadas linha ${lo}, Eventos linha ${le}; ${datas.length} datas (${situacao || 'sem datas'})`);
-  return {ok: true, linhaOlimpiadas: lo, linhaEventos: le, situacao, datas: datas.length};
+  return {ok: true, linhaOlimpiadas: lo, linhaEventos: le, situacao, datas: datas.length, desfazer: guardarDesfazerPainel_('Cadastro no calendário', sigla)};
 }
 
 // Primeira linha (a partir da 2) com a coluna da Sigla vazia; cria linhas se precisar.
@@ -308,9 +315,68 @@ function registrarPainel_(acao, sigla, detalhe) {
   let aba = ss.getSheetByName('Registro do painel');
   if (!aba) {
     aba = ss.insertSheet('Registro do painel');
-    aba.appendRow(['Quando', 'Ação', 'Sigla', 'Detalhe']);
+    aba.appendRow(['Quando', 'Quem', 'Ação', 'Sigla', 'Detalhe']);
     aba.setFrozenRows(1);
-    aba.getRange(1, 1, 1, 4).setFontWeight('bold');
+    aba.getRange(1, 1, 1, 5).setFontWeight('bold');
+  } else if (String(aba.getRange(1, 2).getValue()).trim() !== 'Quem') {
+    aba.insertColumnAfter(1);
+    aba.getRange(1, 2).setValue('Quem').setFontWeight('bold');
   }
-  aba.appendRow([Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm'), acao, sigla, detalhe]);
+  aba.appendRow([Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm'), AUTOR_PAINEL || '(sem nome)', acao, sigla, detalhe]);
+}
+
+// ===== Desfazer =====
+
+// Grava uma célula guardando o valor anterior (para poder desfazer).
+function gravarPainel_(aba, linha, col, valor) {
+  const r = aba.getRange(linha, col);
+  LOG_PAINEL.push({aba: aba.getName(), l: linha, c: col, antes: valorGuardadoPainel_(r.getValue())});
+  r.setValue(valor);
+}
+
+function valorGuardadoPainel_(v) {
+  if (v instanceof Date) {
+    if (!FUSO_PLANILHA_PAINEL) FUSO_PLANILHA_PAINEL = SpreadsheetApp.openById(PLANILHA_PAINEL).getSpreadsheetTimeZone();
+    return {d: Utilities.formatDate(v, FUSO_PLANILHA_PAINEL, 'dd/MM/yyyy')};
+  }
+  return v;
+}
+
+// Guarda o que foi gravado nesta chamada e devolve o código para desfazer.
+function guardarDesfazerPainel_(acao, sigla) {
+  if (!LOG_PAINEL.length) return '';
+  SpreadsheetApp.flush();
+  const ss = SpreadsheetApp.openById(PLANILHA_PAINEL);
+  LOG_PAINEL.forEach(x => { x.depois = ss.getSheetByName(x.aba).getRange(x.l, x.c).getDisplayValue(); });
+  const props = PropertiesService.getScriptProperties();
+  const limite = Date.now() - DESFAZER_HORAS_PAINEL * 3600 * 1000;
+  for (const k of props.getKeys()) {
+    if (k.indexOf('desfazer_') !== 0) continue;
+    try { if (JSON.parse(props.getProperty(k)).quando < limite) props.deleteProperty(k); } catch (e) { props.deleteProperty(k); }
+  }
+  const id = Utilities.getUuid().replace(/-/g, '').slice(0, 12);
+  props.setProperty('desfazer_' + id, JSON.stringify({quando: Date.now(), acao, sigla, celulas: LOG_PAINEL}));
+  return id;
+}
+
+// pedido: {id, forcar}
+function desfazerPainel_(p) {
+  const id = String(p.id || '').replace(/[^0-9a-f]/gi, '');
+  const props = PropertiesService.getScriptProperties();
+  const bruto = id ? props.getProperty('desfazer_' + id) : null;
+  if (!bruto) return {ok: false, erro: 'dados', msg: 'Não dá mais para desfazer esta gravação (passou o prazo ou já foi desfeita).'};
+  const reg = JSON.parse(bruto);
+  const ss = SpreadsheetApp.openById(PLANILHA_PAINEL);
+  const mudadas = reg.celulas.filter(x => ss.getSheetByName(x.aba).getRange(x.l, x.c).getDisplayValue() !== x.depois);
+  if (mudadas.length && !p.forcar) {
+    return {ok: false, erro: 'conflito', conflitos: mudadas.map(x => `${x.aba}, linha ${x.l}: alguém mudou depois`)};
+  }
+  for (const x of reg.celulas.slice().reverse()) {
+    const v = x.antes && typeof x.antes === 'object' && x.antes.d ? dataPainel_(x.antes.d) : x.antes;
+    ss.getSheetByName(x.aba).getRange(x.l, x.c).setValue(v === null || v === undefined ? '' : v);
+  }
+  SpreadsheetApp.flush();
+  props.deleteProperty('desfazer_' + id);
+  registrarPainel_('Desfazer', reg.sigla, `Desfeito: ${reg.acao}` + (mudadas.length ? ' (mesmo com mudanças depois)' : ''));
+  return {ok: true, acao: reg.acao, sigla: reg.sigla};
 }

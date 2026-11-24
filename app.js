@@ -25,19 +25,21 @@ const GRP = k => k.replace(/ \((início|fim)\)$/, '');
 const DEC = ['Cadastrar','Em análise','Descartada'];
 const AREAS = ['Matemática','Ciências da Natureza','Ciências Humanas','Linguagens','Tecnologia','Multidisciplinar / Negócios'];
 let confirmando = {};
+const desf = {}; // chave → código para desfazer a última gravação
+const forcarDesf = {};
 let D = null, senhaGravacao = '', filtro = 'pendentes', segF = 'todos', nMeses = 6, forcar = {}, msgs = {}, ocupado = {};
 
 /* ===== Leitura da planilha (gviz, JSONP) ===== */
-const ICONS = {"file-check-2": "<path d=\"M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"m3 15 2 2 4-4\"/>", "file-spreadsheet": "<path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"M8 13h2\"/><path d=\"M14 13h2\"/><path d=\"M8 17h2\"/><path d=\"M14 17h2\"/>", "refresh-cw": "<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/><path d=\"M21 3v5h-5\"/><path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/><path d=\"M8 16H3v5\"/>", "check": "<path d=\"M20 6 9 17l-5-5\"/>", "calendar": "<path d=\"M8 2v4\"/><path d=\"M16 2v4\"/><rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\"/><path d=\"M3 10h18\"/>", "sparkles": "<path d=\"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z\"/>", "circle-alert": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"12\" x2=\"12\" y1=\"8\" y2=\"12\"/><line x1=\"12\" x2=\"12.01\" y1=\"16\" y2=\"16\"/>", "log-out": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\"/><polyline points=\"16 17 21 12 16 7\"/><line x1=\"21\" x2=\"9\" y1=\"12\" y2=\"12\"/>"};
+const ICONS = {"file-check-2": "<path d=\"M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"m3 15 2 2 4-4\"/>", "file-spreadsheet": "<path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"M8 13h2\"/><path d=\"M14 13h2\"/><path d=\"M8 17h2\"/><path d=\"M14 17h2\"/>", "refresh-cw": "<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/><path d=\"M21 3v5h-5\"/><path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/><path d=\"M8 16H3v5\"/>", "check": "<path d=\"M20 6 9 17l-5-5\"/>", "calendar": "<path d=\"M8 2v4\"/><path d=\"M16 2v4\"/><rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\"/><path d=\"M3 10h18\"/>", "sparkles": "<path d=\"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z\"/>", "circle-alert": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"12\" x2=\"12\" y1=\"8\" y2=\"12\"/><line x1=\"12\" x2=\"12.01\" y1=\"16\" y2=\"16\"/>", "circle-help": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\"/><path d=\"M12 17h.01\"/>", "log-out": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\"/><polyline points=\"16 17 21 12 16 7\"/><line x1=\"21\" x2=\"9\" y1=\"12\" y2=\"12\"/>"};
 const ic = n => `<svg class="i" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 function pintarIcones(){ document.querySelectorAll('svg[data-i]').forEach(s => { s.outerHTML = ic(s.dataset.i); }); }
-const TABS = [{id:'decidir', nome:'Olimpíadas novas', curto:'Decidir', i:'sparkles'}, {id:'agenda', nome:'Calendário', curto:'Calendário', i:'calendar'}, {id:'editais', nome:'Editais', curto:'Editais', i:'file-check-2'}, {id:'manual', nome:'Verificar à mão', curto:'Verificar', i:'circle-alert'}];
+const TABS = [{id:'decidir', nome:'Olimpíadas novas', curto:'Decidir', i:'sparkles'}, {id:'agenda', nome:'Calendário', curto:'Calendário', i:'calendar'}, {id:'editais', nome:'Editais', curto:'Editais', i:'file-check-2'}, {id:'manual', nome:'Verificar à mão', curto:'Verificar', i:'circle-alert'}, {id:'ajuda', nome:'Como usar', curto:'Ajuda', i:'circle-help'}];
 let aba = TABS.some(t => '#' + t.id === location.hash) ? location.hash.slice(1) : 'decidir';
 function contagens(){
   if (!D) return {};
   return {decidir: D.radar.filter(c => ['Nova','Em análise'].includes(c.situacao)).length,
     editais: Object.keys(novPorSigla()).filter(s => !aplicado(s)).length,
-    manual: (D.editais.manual || []).length + (D.radarManual || []).length, agenda: ''};
+    manual: (D.editais.manual || []).length + (D.radarManual || []).length, agenda: '', ajuda: ''};
 }
 function navegar(){
   const n = contagens();
@@ -136,15 +138,16 @@ function pedirSenha(texto){
   return new Promise(res => {
     pedeSenhaResolve = res;
     $('#modalErr').textContent = texto || ''; $('#modalSenha').value = '';
-    $('#modal').classList.add('show'); setTimeout(() => $('#modalSenha').focus(), 30);
+    $('#modalNome').value = store.get('cto-painel-nome', '') || '';
+    $('#modal').classList.add('show'); setTimeout(() => ($('#modalNome').value ? $('#modalSenha') : $('#modalNome')).focus(), 30);
   });
 }
 function fecharModal(v){ $('#modal').classList.remove('show'); const r = pedeSenhaResolve; pedeSenhaResolve = null; if (r) r(v); }
 // Faz uma gravação; pede a senha de gravação se ainda não tiver (ou se estiver errada).
 async function gravar(corpo){
   for (let tent = 0; tent < 3; tent++) {
-    if (!senhaGravacao) { const s = await pedirSenha(tent ? 'Senha de gravação incorreta. Tente de novo.' : ''); if (!s) return {ok: false, cancelado: true}; senhaGravacao = s; }
-    const j = await chamar({...corpo, senha: senhaGravacao});
+    if (!senhaGravacao || !store.get('cto-painel-nome', '')) { const s = await pedirSenha(tent ? 'Senha de gravação incorreta. Tente de novo.' : ''); if (!s) return {ok: false, cancelado: true}; senhaGravacao = s; }
+    const j = await chamar({...corpo, senha: senhaGravacao, autor: store.get('cto-painel-nome', '')});
     if (j.erro === 'senha') { senhaGravacao = ''; continue; }
     return j;
   }
@@ -179,9 +182,9 @@ function cards(){
     <div class="prox"><b>Próxima edição:</b> ${esc(c.proxima)}</div>
     ${c.alertas.map(a => `<div class="alert">${esc(a)}</div>`).join('')}
     <p class="obs">${esc(c.obs)} <a href="${esc(safe(c.fonte))}" target="_blank" rel="noopener">Site oficial</a></p>
-    ${d === 'Cadastrada' ? '<p class="obs"><b>Já está no calendário.</b></p>' : `
+    ${d === 'Cadastrada' ? `<p class="obs"><b>Já está no calendário.</b></p><div class="msg ok" id="rmsg-${esc(id)}">${esc(msgs['r:'+c.sigla]||'')}</div>${botaoDesfazer('r:'+c.sigla)}` : `
     <input class="motivo" id="mot-${esc(id)}" placeholder="Motivo (opcional)" value="${esc(c.motivo)}" maxlength="300">
-    <div class="msg" id="rmsg-${esc(id)}">${esc(msgs['r:'+c.sigla]||'')}</div>
+    <div class="msg ${okMsg(msgs['r:'+c.sigla])?'ok':''}" id="rmsg-${esc(id)}">${esc(msgs['r:'+c.sigla]||'')}</div>${botaoDesfazer('r:'+c.sigla)}
     ${confirmando[c.sigla] ? painelCadastro(c, id) : `<div class="dec">${DEC.map(v => `<button data-s="${esc(c.sigla)}" data-v="${v}" aria-pressed="${d===v}" ${ocupado['r:'+c.sigla]?'disabled':''}>${v==='Cadastrar'?'Cadastrar':v==='Descartada'?'Descartar':v}</button>`).join('')}</div>`}`}</article>`;
   }).join('') : '<p class="empty">Nenhuma candidata neste filtro.</p>';
 }
@@ -195,7 +198,7 @@ async function decidir(sigla, situacao){
     const j = await gravar({acao: 'decidirRadar', sigla, situacao: nova, motivo});
     if (j.cancelado) msgs['r:'+sigla] = '';
     else if (!j.ok) msgs['r:'+sigla] = j.msg || 'Não foi possível gravar.';
-    else { c.situacao = nova; c.motivo = motivo; c.decidido = new Date().toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'}); msgs['r:'+sigla] = nova === 'Nova' ? 'Decisão desfeita.' : 'Gravado na aba Radar.'; }
+    else { c.situacao = nova; c.motivo = motivo; c.decidido = new Date().toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'}); msgs['r:'+sigla] = nova === 'Nova' ? 'Decisão desfeita.' : 'Gravado na aba Radar.'; if (j.desfazer) desf['r:'+sigla] = j.desfazer; }
   } catch(e){ msgs['r:'+sigla] = e.msg || 'Erro ao gravar.'; }
   delete ocupado['r:'+sigla]; cards(); stats();
 }
@@ -222,7 +225,7 @@ async function cadastrar(sigla){
     if (j.cancelado) msgs['r:'+sigla] = '';
     else if (!j.ok) msgs['r:'+sigla] = j.msg || 'Não foi possível cadastrar.';
     else {
-      delete confirmando[sigla];
+      delete confirmando[sigla]; if (j.desfazer) desf['r:'+sigla] = j.desfazer;
       msgs['r:'+sigla] = `Cadastrada no calendário (${j.datas} datas${j.situacao ? ', ' + j.situacao : ''}). O site do calendário já mostra; as agendas atualizam em até 2 horas.`;
       delete ocupado['r:'+sigla];
       try { await carregar(); } catch(e){}
@@ -230,6 +233,21 @@ async function cadastrar(sigla){
     }
   } catch(e){ msgs['r:'+sigla] = e.msg || 'Erro ao cadastrar.'; }
   delete ocupado['r:'+sigla]; cards(); stats();
+}
+
+/* ===== Desfazer ===== */
+const okMsg = t => /^(Aplicado|Gravação desfeita|Cadastrada|Gravado|Decisão desfeita)/.test(t || '');
+const botaoDesfazer = k => desf[k] ? `<button class="ui-btn desfazer" data-desf="${esc(k)}" ${ocupado['d:'+k]?'disabled':''}>${ocupado['d:'+k]?'Desfazendo…':forcarDesf[k]?'Desfazer mesmo assim':'Desfazer'}</button>` : '';
+async function desfazer(k){
+  ocupado['d:'+k] = 1; render();
+  try {
+    const j = await gravar({acao: 'desfazer', id: desf[k], forcar: !!forcarDesf[k]});
+    if (j.cancelado) {}
+    else if (j.ok) { delete desf[k]; delete forcarDesf[k]; msgs[k] = 'Gravação desfeita. A planilha voltou ao que era antes.'; try { await carregar(); } catch(e){} }
+    else if (j.erro === 'conflito') { forcarDesf[k] = 1; msgs[k] = 'Alguém mudou essas células depois da gravação. Confira a planilha; se quiser desfazer mesmo assim, clique de novo.'; }
+    else { delete desf[k]; msgs[k] = j.msg || 'Não foi possível desfazer.'; }
+  } catch(e){ msgs[k] = e.msg || 'Erro ao desfazer.'; }
+  delete ocupado['d:'+k]; render();
 }
 
 /* ===== Calendário ===== */
@@ -278,7 +296,7 @@ function editais(){
     return `<article class="cand ap ${ok?'feito':''}"><div class="top"><div><h3>${esc(s)}</h3><div class="nome">edição ${esc(it[0].edicao)} · <a href="${esc(safe(it[0].link))}" target="_blank" rel="noopener">fonte oficial</a></div></div>${ok?'<span class="okb">Aplicado</span>':it.some(x => x.mudanca)?'<span class="new">Data oficial mudou</span>':''}</div>
     <table class="dif"><thead><tr><th>Etapa</th><th>${ok?'Antes':'Planilha'}</th><th>Oficial</th></tr></thead><tbody>${it.map(x => `<tr><td>${esc(x.etapa)}</td><td class="${x.planilha===x.oficial?'':'old'}">${esc(x.planilha||'vazio')}</td><td><b>${esc(x.oficial)}</b>${x.mudanca?' <span class="kind cd">mudou</span>':x.planilha===x.oficial?' <span class="kind of">confirma</span>':''}</td></tr>`).join('')}</tbody></table>
     ${o ? '' : '<div class="msg">Esta sigla não está na aba Eventos.</div>'}
-    <div class="msg" id="msg-${esc(s.replace(/\W/g,'_'))}">${esc(msgs[s]||'')}</div>
+    <div class="msg ${okMsg(msgs[s])?'ok':''}" id="msg-${esc(s.replace(/\W/g,'_'))}">${esc(msgs[s]||'')}</div>${botaoDesfazer(s)}
     ${ok || !o ? '' : `<button class="btn" data-ap="${esc(s)}" ${ocupado[s]?'disabled':''}>${ocupado[s]?'Gravando…':forcar[s]?'Aplicar mesmo assim':'Aplicar na planilha'}</button>`}</article>`; }).join('')}</div>` : '<p class="empty">Nenhuma data oficial nova nesta semana.</p>';
   if ((E.encerradas||[]).length) h += lst('Encerradas pelo organizador', E.encerradas, x => `<li><b>${esc(x.sigla)}</b> – ${esc(x.texto)} <a href="${esc(safe(x.link))}" target="_blank" rel="noopener">fonte</a></li>`);
   if ((E.semEdital||[]).length) h += `<div class="box"><h3>Edição encerrada, próxima sem edital</h3><p>${E.semEdital.map(esc).join(', ')}</p></div>`;
@@ -297,12 +315,12 @@ async function aplicar(sigs){
         itens: it.map(x => ({coluna: x.coluna, oficial: x.oficial, planilha: x.planilha || ''}))});
       if (j.cancelado) { delete ocupado[s]; break; }
       if (j.ok) {
-        delete forcar[s]; msgs[s] = '';
+        delete forcar[s]; msgs[s] = 'Aplicado na planilha.'; if (j.desfazer) desf[s] = j.desfazer;
         const o = D.cadastradas.find(o => o.sigla === s);
         if (o) { it.forEach(x => { o.datas[x.coluna] = brToIso(x.oficial); }); o.confirmadas = j.etapas || o.confirmadas; if (j.confirmado) o.situacao = 'Confirmado'; }
       } else if (j.erro === 'conflito') {
         forcar[s] = 1; msgs[s] = 'A planilha mudou desde a verificação: ' + j.conflitos.join('; ') + '. Confira e clique de novo para gravar mesmo assim.';
-      } else msgs[s] = (j.msg || 'Não foi possível gravar.') + ' Confira a planilha antes de tentar de novo.';
+      } else { msgs[s] = (j.msg || 'Não foi possível gravar.') + ' Confira a planilha antes de tentar de novo.'; if (j.desfazer) desf[s] = j.desfazer; }
     } catch(e){ msgs[s] = e.msg || 'Erro ao gravar.'; }
     delete ocupado[s];
   }
@@ -342,6 +360,7 @@ document.addEventListener('click', ev => {
   else if (b.dataset.s && b.dataset.v === 'Cadastrar') { confirmando[b.dataset.s] = 1; msgs['r:'+b.dataset.s] = ''; cards(); }
   else if (b.dataset.s) decidir(b.dataset.s, b.dataset.v);
   else if (b.dataset.cad) cadastrar(b.dataset.cad);
+  else if (b.dataset.desf) desfazer(b.dataset.desf);
   else if (b.dataset.cadCancel) { delete confirmando[b.dataset.cadCancel]; cards(); }
   else if (b.dataset.ap) { const l = b.dataset.ap === '__todas' ? Object.keys(novPorSigla()).filter(s => !aplicado(s)) : [b.dataset.ap]; aplicar(l); }
   else if (b.id === 'maisMeses') { nMeses = nMeses < 12 ? 12 : 6; agenda(); }
@@ -349,7 +368,11 @@ document.addEventListener('click', ev => {
   else if (b.id === 'modalCancel') fecharModal('');
 });
 $('#gateForm').addEventListener('submit', entrar);
-$('#modalForm').addEventListener('submit', e => { e.preventDefault(); fecharModal($('#modalSenha').value); });
+$('#modalForm').addEventListener('submit', e => { e.preventDefault();
+  const nome = $('#modalNome').value.trim();
+  if (nome.length < 2) { $('#modalErr').textContent = 'Digite o seu nome (fica anotado no registro das gravações).'; $('#modalNome').focus(); return; }
+  if (!$('#modalSenha').value) { $('#modalErr').textContent = 'Digite a senha de gravação.'; $('#modalSenha').focus(); return; }
+  store.set('cto-painel-nome', nome.slice(0, 60)); fecharModal($('#modalSenha').value); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#modal').classList.contains('show')) fecharModal(''); });
 
 pintarIcones();
