@@ -2,7 +2,7 @@
 // Lê a planilha pública (abas Olimpiadas, Eventos e Radar) e o arquivo dados.json (relatório da tarefa semanal).
 // Gravações passam pelo Apps Script "Painel" (conta do CTO), que confere a senha de gravação.
 {
-const WEBAPP = ''; // endereço do app da Web do Apps Script (termina em /exec)
+const WEBAPP = 'https://script.google.com/macros/s/AKfycbyGeTiejwLpS4g8ihrE2BTTYlpamqRMjSPLSn14--1aKMdiW1xPDBvzeWRP9kt9LQXu/exec'; // endereço do app da Web do Apps Script (termina em /exec)
 const SHEET_ID = '1wF10E2_omNchLjgwAkMNBRixaEMf1wp17DaxzZsgKag';
 const PLANILHA_LINK = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit';
 const ENTRADA_DIAS = 30;
