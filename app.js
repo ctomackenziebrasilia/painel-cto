@@ -254,9 +254,9 @@ function editais(){
   const lst = (t,a,f) => `<div class="box"><h3>${t}</h3><ul>${a.map(f).join('')}</ul></div>`;
   let h = E.aviso ? `<p class="lead"><b>${esc(E.aviso)}</b></p>` : '';
   h += `<div class="apl-head"><h3 style="margin:0">Datas oficiais para aplicar (${Object.keys(P).length})</h3>${pend.length > 1 ? `<button class="btn" data-ap="__todas">Aplicar todas na planilha</button>` : ''}</div>`;
-  h += Object.keys(P).length ? `<div class="grid">${Object.entries(P).map(([s,it]) => { const ok = aplicado(s), o = C.find(o => o.sigla === s);
-    return `<article class="cand ap ${ok?'feito':''}"><div class="top"><div><h3>${esc(s)}</h3><div class="nome">edição ${esc(it[0].edicao)} · <a href="${esc(safe(it[0].link))}" target="_blank" rel="noopener">fonte oficial</a></div></div>${ok?'<span class="okb">Aplicado</span>':''}</div>
-    <table class="dif"><thead><tr><th>Etapa</th><th>${ok?'Antes':'Planilha'}</th><th>Oficial</th></tr></thead><tbody>${it.map(x => `<tr><td>${esc(x.etapa)}</td><td class="${x.planilha===x.oficial?'':'old'}">${esc(x.planilha||'vazio')}</td><td><b>${esc(x.oficial)}</b>${x.planilha===x.oficial?' <span class="kind of">confirma</span>':''}</td></tr>`).join('')}</tbody></table>
+  h += Object.keys(P).length ? `<div class="grid">${Object.entries(P).sort((a,b) => (b[1].some(x=>x.mudanca)?1:0) - (a[1].some(x=>x.mudanca)?1:0)).map(([s,it]) => { const ok = aplicado(s), o = C.find(o => o.sigla === s);
+    return `<article class="cand ap ${ok?'feito':''}"><div class="top"><div><h3>${esc(s)}</h3><div class="nome">edição ${esc(it[0].edicao)} · <a href="${esc(safe(it[0].link))}" target="_blank" rel="noopener">fonte oficial</a></div></div>${ok?'<span class="okb">Aplicado</span>':it.some(x => x.mudanca)?'<span class="new">Data oficial mudou</span>':''}</div>
+    <table class="dif"><thead><tr><th>Etapa</th><th>${ok?'Antes':'Planilha'}</th><th>Oficial</th></tr></thead><tbody>${it.map(x => `<tr><td>${esc(x.etapa)}</td><td class="${x.planilha===x.oficial?'':'old'}">${esc(x.planilha||'vazio')}</td><td><b>${esc(x.oficial)}</b>${x.mudanca?' <span class="kind cd">mudou</span>':x.planilha===x.oficial?' <span class="kind of">confirma</span>':''}</td></tr>`).join('')}</tbody></table>
     ${o ? '' : '<div class="msg">Esta sigla não está na aba Eventos.</div>'}
     <div class="msg" id="msg-${esc(s.replace(/\W/g,'_'))}">${esc(msgs[s]||'')}</div>
     ${ok || !o ? '' : `<button class="btn" data-ap="${esc(s)}" ${ocupado[s]?'disabled':''}>${ocupado[s]?'Gravando…':forcar[s]?'Aplicar mesmo assim':'Aplicar na planilha'}</button>`}</article>`; }).join('')}</div>` : '<p class="empty">Nenhuma data oficial nova nesta semana.</p>';
@@ -303,8 +303,8 @@ async function abrir(){
   try {
     await carregar();
     const prox = D.proxima ? ` Próxima verificação: ${dt(D.proxima).toLocaleDateString('pt-BR',{weekday:'long', day:'2-digit', month:'2-digit'})}.` : '';
-    $('#titulo').textContent = `Verificação semanal de ${br(D.atualizado)}`;
-    $('#sub').textContent = `O que a tarefa semanal encontrou, para a equipe decidir e aplicar com um clique.${prox}`;
+    $('#titulo').textContent = 'Painel do Calendário Olímpico';
+    $('#sub').textContent = `Última verificação semanal: ${br(D.atualizado)}.${prox} Olimpíadas e radar são lidos da planilha na hora em que a página abre.`;
     $('#foot').innerHTML = `Relatório da tarefa semanal de ${br(D.atualizado)}; olimpíadas e radar lidos agora da <a href="${esc(PLANILHA_LINK)}" target="_blank" rel="noopener">planilha</a>. Cada gravação fica anotada na aba "Registro do painel". Nada muda na planilha sem a senha de gravação.`;
     render();
   } catch(e){ $('#sub').textContent = 'Não foi possível carregar os dados (' + (e.message || e) + '). Tente recarregar a página.'; }
