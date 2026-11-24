@@ -165,7 +165,7 @@ function aplicarDatasPainel_(p) {
   const tudo = preenchidas.length > 0 && preenchidas.every(t => etapas.has(t.replace(/ \((início|fim)\)$/, '')));
   const verif = String(p.verificacao || Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy'));
   let det = String(valores[r][col('Detalhes')] || '').replace(/ ?Datas oficiais conferidas em [^.]*\./, '');
-  if (tudo) det = det.replace(/Previsão com base[^.]*\.\s*/g, '');
+  if (tudo) det = det.replace(/Previsão com base.*?\.(?=\s|$)\s*/g, '');
   det = (det + ` Datas oficiais conferidas em ${verif} (painel): ${listaEtapas.join(', ')}.`).trim();
 
   aba.getRange(linha, col('Etapas confirmadas') + 1).setValue(listaEtapas.join(', '));
@@ -292,11 +292,15 @@ function primeiraLinhaLivrePainel_(aba, colSigla) {
 
 // ===== Apoio =====
 
+// Cria a data à meia-noite no fuso da PLANILHA (se usar o fuso do script, a data pode cair um dia antes).
+let FUSO_PLANILHA_PAINEL = null;
 function dataPainel_(s) {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || ''));
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || '').trim());
   if (!m) return null;
-  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
-  return d.getDate() === Number(m[1]) && d.getMonth() === Number(m[2]) - 1 ? d : null;
+  const dia = Number(m[1]), mes = Number(m[2]);
+  if (mes < 1 || mes > 12 || dia < 1 || dia > new Date(Number(m[3]), mes, 0).getDate()) return null;
+  if (!FUSO_PLANILHA_PAINEL) FUSO_PLANILHA_PAINEL = SpreadsheetApp.openById(PLANILHA_PAINEL).getSpreadsheetTimeZone();
+  return Utilities.parseDate(`${m[1]}/${m[2]}/${m[3]} 00:00`, FUSO_PLANILHA_PAINEL, 'dd/MM/yyyy HH:mm');
 }
 
 function registrarPainel_(acao, sigla, detalhe) {

@@ -107,7 +107,6 @@ async function entrar(ev){
     const j = await chamar({acao: 'entrar', senha: s});
     if (!j.ok) { $('#gateErr').textContent = j.msg || 'Senha incorreta.'; return; }
     store.set('cto-painel-entrada', Date.now() + ENTRADA_DIAS * 864e5);
-    if (j.podeGravar) senhaGravacao = s;
     $('#gateSenha').value = ''; $('#gateErr').textContent = '';
     abrir();
   } catch(e){ $('#gateErr').textContent = e.msg || 'Erro ao conferir a senha.'; }
