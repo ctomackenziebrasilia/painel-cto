@@ -355,7 +355,10 @@ async function abrir(){
     await carregar();
     const prox = D.proxima ? ` Próxima verificação: ${dt(D.proxima).toLocaleDateString('pt-BR',{weekday:'long', day:'2-digit', month:'2-digit'})}.` : '';
     $('#titulo').textContent = `Última verificação: ${br(D.atualizado)}`;
-    document.querySelector('#status .dot').classList.remove('wait');
+    const dias = D.atualizado ? Math.floor((hoje - dt(D.atualizado)) / 864e5) : 99;
+    $('#atraso').classList.toggle('hidden', dias <= 8);
+    if (dias > 8) $('#atraso').innerHTML = `<b>O relatório tem ${dias} dias.</b> A verificação de segunda pode ter falhado. As abas Decidir e Calendário continuam atualizadas (vêm da planilha), mas os editais podem estar desatualizados. Avise o Wilson.`;
+    document.querySelector('#status .dot').classList.toggle('wait', dias > 8);
     $('#sub').textContent = `Relatório da tarefa semanal de ${br(D.atualizado)}.${prox} As olimpíadas e o radar são lidos da planilha na hora em que a página abre.`;
     $('#subM').textContent = `Última verificação: ${br(D.atualizado)}.${prox}`;
     $('#foot').innerHTML = `Cada gravação fica anotada na aba "Registro do painel" da <a href="${esc(PLANILHA_LINK)}" target="_blank" rel="noopener">planilha</a>. Nada muda na planilha sem a senha de gravação.`;
