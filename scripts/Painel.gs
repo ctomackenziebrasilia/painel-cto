@@ -6,6 +6,10 @@
 //   - registrar na aba Radar a decisão da equipe sobre cada olimpíada nova;
 //   - CADASTRAR uma olimpíada do Radar direto no calendário (abas Olimpiadas e Eventos);
 //   - DESFAZER uma gravação feita pelo painel (até 72 horas depois, se ninguém mexeu nas mesmas células).
+// E, sozinho, todo dia de madrugada (VIRADA AUTOMÁTICA DE ANO, ver o fim do arquivo):
+//   - quando a última data de uma olimpíada passou há mais de 30 dias, copia as datas para o ano seguinte
+//     como "Previsto". Fica anotado no "Registro do painel" e pode ser desfeito pelo painel por 30 dias.
+//   - Para ligar (uma vez): selecione a função instalarViradaAutomatica no editor e clique em Executar.
 // O nome de quem gravou (digitado no painel) vai para a aba "Registro do painel".
 // As senhas ficam guardadas só aqui (resumo criptográfico nas Propriedades do script), nunca no site.
 // Cada gravação fica anotada na aba "Registro do painel".
@@ -34,6 +38,9 @@ let AUTOR_PAINEL = '', LOG_PAINEL = [];
 const DESFAZER_HORAS_PAINEL = 72; // por quanto tempo uma gravação pode ser desfeita
 const MAX_ERROS_PAINEL = 8;          // tentativas erradas de senha...
 const BLOQUEIO_SEG_PAINEL = 15 * 60; // ...bloqueiam novas tentativas por 15 minutos
+const VIRADA_MARGEM_DIAS = 30;       // virada automática: dias depois da última data da edição
+const VIRADA_MAX_POR_DIA = 12;       // mais do que isso num dia só = algo estranho; não vira nada e anota no registro
+const VIRADA_DESFAZER_DIAS = 30;     // por quanto tempo uma virada automática pode ser desfeita
 
 // ===== Senhas =====
 
@@ -172,7 +179,7 @@ function aplicarDatasPainel_(p) {
   const tudo = preenchidas.length > 0 && preenchidas.every(t => etapas.has(t.replace(/ \((início|fim)\)$/, '')));
   const verif = String(p.verificacao || Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy'));
   let det = String(valores[r][col('Detalhes')] || '').replace(/ ?Datas oficiais conferidas em [^.]*\./, '');
-  if (tudo) det = det.replace(/Previsão com base.*?\.(?=\s|$)\s*/g, '');
+  if (tudo) det = det.replace(/Previsão com base.*?\.(?=\s|$)\s*/g, '').replace(/Virada automática em [^.]*\.\s*/g, '');
   det = (det + ` Datas oficiais conferidas em ${verif} (painel): ${listaEtapas.join(', ')}.`).trim();
 
   gravarPainel_(aba, linha, col('Etapas confirmadas') + 1, listaEtapas.join(', '));
@@ -343,20 +350,23 @@ function valorGuardadoPainel_(v) {
 }
 
 // Guarda o que foi gravado nesta chamada e devolve o código para desfazer.
-function guardarDesfazerPainel_(acao, sigla) {
+function guardarDesfazerPainel_(acao, sigla, horas, extra) {
   if (!LOG_PAINEL.length) return '';
   SpreadsheetApp.flush();
   const ss = SpreadsheetApp.openById(PLANILHA_PAINEL);
   LOG_PAINEL.forEach(x => { x.depois = ss.getSheetByName(x.aba).getRange(x.l, x.c).getDisplayValue(); });
   const props = PropertiesService.getScriptProperties();
-  const limite = Date.now() - DESFAZER_HORAS_PAINEL * 3600 * 1000;
   for (const k of props.getKeys()) {
     if (k.indexOf('desfazer_') !== 0) continue;
-    try { if (JSON.parse(props.getProperty(k)).quando < limite) props.deleteProperty(k); } catch (e) { props.deleteProperty(k); }
+    try { if (prazoDesfazerPainel_(JSON.parse(props.getProperty(k))) < Date.now()) props.deleteProperty(k); } catch (e) { props.deleteProperty(k); }
   }
   const id = Utilities.getUuid().replace(/-/g, '').slice(0, 12);
-  props.setProperty('desfazer_' + id, JSON.stringify({quando: Date.now(), acao, sigla, celulas: LOG_PAINEL}));
+  props.setProperty('desfazer_' + id, JSON.stringify(Object.assign({quando: Date.now(), ate: Date.now() + (horas || DESFAZER_HORAS_PAINEL) * 3600 * 1000, acao, sigla, celulas: LOG_PAINEL}, extra || {})));
   return id;
+}
+
+function prazoDesfazerPainel_(reg) {
+  return reg.ate || (reg.quando + DESFAZER_HORAS_PAINEL * 3600 * 1000);
 }
 
 // pedido: {id, forcar}
@@ -366,6 +376,10 @@ function desfazerPainel_(p) {
   const bruto = id ? props.getProperty('desfazer_' + id) : null;
   if (!bruto) return {ok: false, erro: 'dados', msg: 'Não dá mais para desfazer esta gravação (passou o prazo ou já foi desfeita).'};
   const reg = JSON.parse(bruto);
+  if (prazoDesfazerPainel_(reg) < Date.now()) {
+    props.deleteProperty('desfazer_' + id);
+    return {ok: false, erro: 'dados', msg: 'Não dá mais para desfazer esta gravação (passou o prazo).'};
+  }
   const ss = SpreadsheetApp.openById(PLANILHA_PAINEL);
   const mudadas = reg.celulas.filter(x => ss.getSheetByName(x.aba).getRange(x.l, x.c).getDisplayValue() !== x.depois);
   if (mudadas.length && !p.forcar) {
@@ -377,6 +391,110 @@ function desfazerPainel_(p) {
   }
   SpreadsheetApp.flush();
   props.deleteProperty('desfazer_' + id);
-  registrarPainel_('Desfazer', reg.sigla, `Desfeito: ${reg.acao}` + (mudadas.length ? ' (mesmo com mudanças depois)' : ''));
+  // Virada desfeita: não repetir a virada desta mesma edição nos próximos dias.
+  if (reg.pular) props.setProperty('virada_pular_' + reg.sigla, reg.pular);
+  registrarPainel_('Desfazer', reg.sigla, `Desfeito: ${reg.acao}` + (mudadas.length ? ' (mesmo com mudanças depois)' : '') +
+    (reg.pular ? '. A virada automática não será repetida para esta edição; ela volta a valer quando as datas da linha mudarem.' : ''));
   return {ok: true, acao: reg.acao, sigla: reg.sigla};
+}
+
+// ===== Virada automática de ano =====
+// Todo dia, de madrugada, olha cada linha da aba Eventos (menos as "Cancelado").
+// Se a ÚLTIMA data preenchida passou há mais de VIRADA_MARGEM_DIAS dias, a edição acabou:
+// todas as datas da linha vão para o ano seguinte (mesmo dia e mês; 29/02 vira 28/02),
+// a Situação volta para "Previsto" ("Previsto (só o mês)" continua igual), "Etapas confirmadas" fica vazia
+// e "Detalhes" ganha uma frase explicando. "Fonte das datas" continua a da edição anterior (é a base da previsão).
+// Depois a tarefa semanal do Claude procura o edital novo e a equipe aplica as datas oficiais pelo painel.
+
+// Rodar UMA vez no editor (Executar) para ligar. Rodar de novo não duplica.
+function instalarViradaAutomatica() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'viradaAutomatica').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('viradaAutomatica').timeBased().everyDays(1).atHour(3).inTimezone('America/Sao_Paulo').create();
+  const r = viradaPainel_(true);
+  console.log('Virada automática ligada: roda todo dia por volta das 3h. ' + resumoViradaPainel_(r));
+}
+
+// Para desligar, se um dia precisar.
+function desligarViradaAutomatica() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'viradaAutomatica').forEach(t => ScriptApp.deleteTrigger(t));
+  console.log('Virada automática desligada.');
+}
+
+// Mostra o que viraria hoje, sem gravar nada.
+function testarViradaAutomatica() {
+  console.log(resumoViradaPainel_(viradaPainel_(true)));
+}
+
+// Chamada pelo gatilho diário.
+function viradaAutomatica() {
+  viradaPainel_(false);
+}
+
+function resumoViradaPainel_(r) {
+  if (!r.lista.length) return 'Hoje nenhuma olimpíada precisa virar de ano.';
+  return `Hoje ${r.simular ? 'virariam' : 'viraram'}: ` + r.lista.map(x => `${x.sigla} (${x.anoBase} → ${x.anoBase + x.anos})`).join(', ') + (r.suspensa ? ' – SUSPENSA (muitas de uma vez)' : '');
+}
+
+function viradaPainel_(simular) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(60000)) return {simular, lista: [], suspensa: false};
+  try {
+    const ss = SpreadsheetApp.openById(PLANILHA_PAINEL);
+    FUSO_PLANILHA_PAINEL = ss.getSpreadsheetTimeZone();
+    const fuso = FUSO_PLANILHA_PAINEL;
+    const aba = ss.getSheetByName('Eventos');
+    const valores = aba.getDataRange().getValues();
+    const tit = valores[0].map(v => String(v).trim());
+    const col = t => tit.indexOf(t);
+    for (const t of ['Sigla', 'Situação', 'Etapas confirmadas', 'Detalhes']) if (col(t) < 0) throw new Error(`Coluna "${t}" não encontrada na aba Eventos.`);
+    const iso = d => Utilities.formatDate(d, fuso, 'yyyy-MM-dd');
+    const br = s => s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4);
+    const somaAnos = (s, n) => { let d = s.slice(5); if (d === '02-29') d = '02-28'; return (Number(s.slice(0, 4)) + n) + '-' + d; };
+    const hoje = iso(new Date());
+    const limite = iso(new Date(Date.now() - VIRADA_MARGEM_DIAS * 864e5));
+    const colsData = COLUNAS_DATA_PAINEL.map(t => col(t)).filter(c => c >= 0);
+
+    const lista = [];
+    for (let r = 1; r < valores.length; r++) {
+      const sigla = String(valores[r][col('Sigla')]).trim();
+      const situacao = String(valores[r][col('Situação')]).trim();
+      if (!sigla || situacao === 'Cancelado') continue;
+      const datas = colsData.filter(c => valores[r][c] instanceof Date).map(c => [c, iso(valores[r][c])]);
+      if (!datas.length) continue;
+      const ultima = datas.map(d => d[1]).sort().pop();
+      if (ultima >= limite) continue;
+      if (PropertiesService.getScriptProperties().getProperty('virada_pular_' + sigla) === ultima) continue; // virada desfeita pela equipe
+      let anos = 1;
+      while (somaAnos(ultima, anos) < limite && anos < 5) anos++;
+      lista.push({r, sigla, situacao, datas, ultima, anos, anoBase: Number(ultima.slice(0, 4))});
+    }
+    if (simular || !lista.length) return {simular, lista, suspensa: false};
+
+    AUTOR_PAINEL = 'Automático';
+    if (lista.length > VIRADA_MAX_POR_DIA) {
+      LOG_PAINEL = [];
+      registrarPainel_('Virada automática suspensa', '', `${lista.length} olimpíadas iriam virar de ano no mesmo dia (${lista.map(x => x.sigla).join(', ')}). Nada foi mudado: confira a aba Eventos.`);
+      return {simular, lista, suspensa: true};
+    }
+    for (const x of lista) {
+      LOG_PAINEL = [];
+      const linha = x.r + 1;
+      for (const [c, d] of x.datas) gravarPainel_(aba, linha, c + 1, dataPainel_(br(somaAnos(d, x.anos))));
+      if (x.situacao !== 'Previsto' && x.situacao !== 'Previsto (só o mês)') gravarPainel_(aba, linha, col('Situação') + 1, 'Previsto');
+      const etapas = String(valores[x.r][col('Etapas confirmadas')] || '').trim();
+      if (etapas) gravarPainel_(aba, linha, col('Etapas confirmadas') + 1, '');
+      let det = String(valores[x.r][col('Detalhes')] || '')
+        .replace(/ ?Datas oficiais conferidas em [^.]*\./g, '')
+        .replace(/Virada automática em [^.]*\.\s*/g, '');
+      if (etapas) det = det.replace(/Previsão com base.*?\.(?=\s|$)\s*/g, '');
+      const novoAno = x.anoBase + x.anos;
+      det = (`Virada automática em ${br(hoje)}: datas da edição de ${x.anoBase} repetidas em ${novoAno}, aguardando o edital. ` + det.trim()).trim();
+      gravarPainel_(aba, linha, col('Detalhes') + 1, det);
+      const id = guardarDesfazerPainel_('Virada automática', x.sigla, VIRADA_DESFAZER_DIAS * 24, {pular: x.ultima});
+      registrarPainel_('Virada automática', x.sigla, `Datas da edição de ${x.anoBase} copiadas para ${novoAno} como "Previsto" (a última data era ${br(x.ultima)}). Pode ser desfeita pelo painel por ${VIRADA_DESFAZER_DIAS} dias (código ${id}).`);
+    }
+    return {simular, lista, suspensa: false};
+  } finally {
+    lock.releaseLock();
+  }
 }

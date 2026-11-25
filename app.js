@@ -78,9 +78,10 @@ const txt = v => String(v ?? '').trim();
 const isoDe = v => /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : brToIso(v);
 
 async function carregar(){
-  const [o, e, r, j] = await Promise.all([
+  const [o, e, r, j, reg] = await Promise.all([
     gviz('Olimpiadas'), gviz('Eventos'), gviz('Radar'),
-    fetch('dados.json', {cache: 'no-store'}).then(x => x.json())
+    fetch('dados.json', {cache: 'no-store'}).then(x => x.json()),
+    gviz('Registro do painel').catch(() => [])
   ]);
   const OL = Object.fromEntries(o.filter(x => txt(x['Sigla'])).map(x => [txt(x['Sigla']), x]));
   const cadastradas = e.filter(x => txt(x['Sigla'])).map(x => {
@@ -107,7 +108,15 @@ async function carregar(){
       return {rotulo: txt(rot), ini: brToIso(a), fim: brToIso(b)};
     }).filter(d => d.ini)
   }));
-  D = {...j, cadastradas, radar, editais: j.editais || {}};
+  // Viradas automáticas de ano dos últimos 30 dias que ainda não foram desfeitas.
+  const ultDesf = {}; reg.forEach((x, i) => { if (txt(x['Ação']) === 'Desfazer' && /Virada automática/.test(txt(x['Detalhe']))) ultDesf[txt(x['Sigla'])] = i; });
+  const lim = new Date(hoje); lim.setDate(lim.getDate() - 30);
+  const viradas = reg.map((x, i) => ({x, i})).filter(({x}) => txt(x['Ação']) === 'Virada automática').map(({x, i}) => {
+    const q = txt(x['Quando']), iso = isoDe(q.slice(0, 10)) || q.slice(0, 10);
+    return {sigla: txt(x['Sigla']), quando: iso, desfeita: (ultDesf[txt(x['Sigla'])] ?? -1) > i, detalhe: txt(x['Detalhe']).replace(/ Pode ser desfeita.*$/, ''), id: (/código ([0-9a-f]{12})/.exec(txt(x['Detalhe'])) || [])[1]};
+  }).filter(v => v.id && dt(v.quando) && dt(v.quando) >= lim && (!v.desfeita || ('v:' + v.sigla) in msgs));
+  for (const v of viradas) if (!v.desfeita && !(('v:' + v.sigla) in msgs)) desf['v:' + v.sigla] = v.id;
+  D = {...j, cadastradas, radar, viradas, editais: j.editais || {}};
 }
 
 /* ===== Senhas ===== */
@@ -291,6 +300,9 @@ function editais(){
   const E = D.editais, P = novPorSigla(), pend = Object.keys(P).filter(s => !aplicado(s));
   const lst = (t,a,f) => `<div class="box"><h3>${t}</h3><ul>${a.map(f).join('')}</ul></div>`;
   let h = E.aviso ? `<p class="lead"><b>${esc(E.aviso)}</b></p>` : '';
+  const V = D.viradas || [];
+  if (V.length || Object.keys(msgs).some(k => k.startsWith('v:'))) h += `<div class="box"><h3>Viradas automáticas de ano (últimos 30 dias)</h3><p>A edição acabou e as datas foram repetidas no ano seguinte como "Previsto", até sair o edital novo. Se alguma virada estiver errada, use Desfazer.</p>${V.map(v => { const k = 'v:' + v.sigla;
+    return `<div class="virada"><p><b>${esc(v.sigla)}</b> · ${esc(br(v.quando))} – ${esc(v.detalhe)}</p><div class="msg ${okMsg(msgs[k])?'ok':''}">${esc(msgs[k]||'')}</div>${botaoDesfazer(k)}</div>`; }).join('')}</div>`;
   h += `<div class="apl-head"><h3 style="margin:0">Datas oficiais para aplicar (${Object.keys(P).length})</h3>${pend.length > 1 ? `<button class="btn" data-ap="__todas">Aplicar todas na planilha</button>` : ''}</div>`;
   h += Object.keys(P).length ? `<div class="grid">${Object.entries(P).sort((a,b) => (b[1].some(x=>x.mudanca)?1:0) - (a[1].some(x=>x.mudanca)?1:0)).map(([s,it]) => { const ok = aplicado(s), o = C.find(o => o.sigla === s);
     return `<article class="cand ap ${ok?'feito':''}"><div class="top"><div><h3>${esc(s)}</h3><div class="nome">edição ${esc(it[0].edicao)} · <a href="${esc(safe(it[0].link))}" target="_blank" rel="noopener">fonte oficial</a></div></div>${ok?'<span class="okb">Aplicado</span>':it.some(x => x.mudanca)?'<span class="new">Data oficial mudou</span>':''}</div>
