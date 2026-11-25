@@ -14,7 +14,7 @@ Mostra, de forma visual, o resultado da tarefa semanal do Claude ("Calendário O
 - quadro das **viradas automáticas de ano** (aba Editais), com Desfazer.
 
 ## Virada automática de ano
-Todo dia, por volta das 3h, o Apps Script olha a aba **Eventos**. Quando a última data de uma olimpíada passou há mais de 30 dias,
+Todo dia, por volta das 3h, o Apps Script olha a aba **Eventos**. Quando a última data de uma olimpíada passou há mais de 30 dias (180 se a linha só tiver datas de inscrição ou divulgação),
 as datas vão para o ano seguinte como "Previsto" até sair o edital novo (olimpíadas "Cancelado" ficam de fora).
 Fica anotado no **Registro do painel** como "Virada automática" e pode ser desfeito pelo painel por 30 dias.
 Mais de 12 viradas no mesmo dia: nada é mudado e fica um aviso no registro.

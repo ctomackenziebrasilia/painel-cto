@@ -39,6 +39,8 @@ const DESFAZER_HORAS_PAINEL = 72; // por quanto tempo uma gravação pode ser de
 const MAX_ERROS_PAINEL = 8;          // tentativas erradas de senha...
 const BLOQUEIO_SEG_PAINEL = 15 * 60; // ...bloqueiam novas tentativas por 15 minutos
 const VIRADA_MARGEM_DIAS = 30;       // virada automática: dias depois da última data da edição
+const VIRADA_MARGEM_SO_INSCRICAO_DIAS = 180; // se a linha só tem datas de inscrição/divulgação (prova ainda sem data), espera bem mais
+const COLUNAS_SO_INSCRICAO_PAINEL = ['Inscrição (início)', 'Inscrição (fim)', 'Divulgação aos alunos'];
 const VIRADA_MAX_POR_DIA = 12;       // mais do que isso num dia só = algo estranho; não vira nada e anota no registro
 const VIRADA_DESFAZER_DIAS = 30;     // por quanto tempo uma virada automática pode ser desfeita
 
@@ -400,7 +402,8 @@ function desfazerPainel_(p) {
 
 // ===== Virada automática de ano =====
 // Todo dia, de madrugada, olha cada linha da aba Eventos (menos as "Cancelado").
-// Se a ÚLTIMA data preenchida passou há mais de VIRADA_MARGEM_DIAS dias, a edição acabou:
+// Se a ÚLTIMA data preenchida passou há mais de VIRADA_MARGEM_DIAS dias, a edição acabou
+// (se a linha só tem datas de inscrição/divulgação, espera VIRADA_MARGEM_SO_INSCRICAO_DIAS, porque a prova pode estar sem data):
 // todas as datas da linha vão para o ano seguinte (mesmo dia e mês; 29/02 vira 28/02),
 // a Situação volta para "Previsto" ("Previsto (só o mês)" continua igual), "Etapas confirmadas" fica vazia
 // e "Detalhes" ganha uma frase explicando. "Fonte das datas" continua a da edição anterior (é a base da previsão).
@@ -451,7 +454,9 @@ function viradaPainel_(simular) {
     const br = s => s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4);
     const somaAnos = (s, n) => { let d = s.slice(5); if (d === '02-29') d = '02-28'; return (Number(s.slice(0, 4)) + n) + '-' + d; };
     const hoje = iso(new Date());
-    const limite = iso(new Date(Date.now() - VIRADA_MARGEM_DIAS * 864e5));
+    const limiteNormal = iso(new Date(Date.now() - VIRADA_MARGEM_DIAS * 864e5));
+    const limiteSoInscricao = iso(new Date(Date.now() - VIRADA_MARGEM_SO_INSCRICAO_DIAS * 864e5));
+    const colsSoInscricao = COLUNAS_SO_INSCRICAO_PAINEL.map(t => col(t));
     const colsData = COLUNAS_DATA_PAINEL.map(t => col(t)).filter(c => c >= 0);
 
     const lista = [];
@@ -462,11 +467,14 @@ function viradaPainel_(simular) {
       const datas = colsData.filter(c => valores[r][c] instanceof Date).map(c => [c, iso(valores[r][c])]);
       if (!datas.length) continue;
       const ultima = datas.map(d => d[1]).sort().pop();
+      // Só inscrição/divulgação preenchidas: a prova pode ainda acontecer sem data na planilha; espera 180 dias.
+      const soInscricao = datas.every(d => colsSoInscricao.indexOf(d[0]) >= 0);
+      const limite = soInscricao ? limiteSoInscricao : limiteNormal;
       if (ultima >= limite) continue;
       if (PropertiesService.getScriptProperties().getProperty('virada_pular_' + sigla) === ultima) continue; // virada desfeita pela equipe
       let anos = 1;
       while (somaAnos(ultima, anos) < limite && anos < 5) anos++;
-      lista.push({r, sigla, situacao, datas, ultima, anos, anoBase: Number(ultima.slice(0, 4))});
+      lista.push({r, sigla, situacao, datas, ultima, anos, soInscricao, anoBase: Number(ultima.slice(0, 4))});
     }
     if (simular || !lista.length) return {simular, lista, suspensa: false};
 
@@ -491,7 +499,7 @@ function viradaPainel_(simular) {
       det = (`Virada automática em ${br(hoje)}: datas da edição de ${x.anoBase} repetidas em ${novoAno}, aguardando o edital. ` + det.trim()).trim();
       gravarPainel_(aba, linha, col('Detalhes') + 1, det);
       const id = guardarDesfazerPainel_('Virada automática', x.sigla, VIRADA_DESFAZER_DIAS * 24, {pular: x.ultima});
-      registrarPainel_('Virada automática', x.sigla, `Datas da edição de ${x.anoBase} copiadas para ${novoAno} como "Previsto" (a última data era ${br(x.ultima)}). Pode ser desfeita pelo painel por ${VIRADA_DESFAZER_DIAS} dias (código ${id}).`);
+      registrarPainel_('Virada automática', x.sigla, `Datas da edição de ${x.anoBase} copiadas para ${novoAno} como "Previsto" (a última data era ${br(x.ultima)}${x.soInscricao ? ', só de inscrição: esperou ' + VIRADA_MARGEM_SO_INSCRICAO_DIAS + ' dias' : ''}). Pode ser desfeita pelo painel por ${VIRADA_DESFAZER_DIAS} dias (código ${id}).`);
     }
     return {simular, lista, suspensa: false};
   } finally {
